@@ -87,7 +87,11 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
     // 2. HTML'i çekip açıklama kısmını alalım
     await validateUrlForSsrf(url);
     const { data: html } = await axios.get(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      headers: { 
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Cookie': 'CONSENT=YES+cb.20230531-04-p0.tr+FX+909; SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAnRyIAEaBgiA_eWbBg',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
+      },
       timeout: 8000,
       maxContentLength: config.maxContentLength
     });
