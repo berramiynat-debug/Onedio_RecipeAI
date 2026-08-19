@@ -92,6 +92,7 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
         'Cookie': 'CONSENT=YES+cb.20220301-11-p0.en+FX+111; SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_eWbBg',
         'Accept-Language': 'en-US,en;q=0.9'
       },
+      responseEncoding: 'utf8',
       timeout: 8000,
       maxContentLength: config.maxContentLength
     });
@@ -141,6 +142,7 @@ async function scrapeInstagram(url: string): Promise<ScrapedMetadata> {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
       },
+      responseEncoding: 'utf8',
       timeout: 8000,
       maxContentLength: config.maxContentLength
     });
@@ -208,6 +210,7 @@ async function scrapeTikTok(url: string): Promise<ScrapedMetadata> {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
       },
+      responseEncoding: 'utf8',
       timeout: 8000,
       maxContentLength: config.maxContentLength
     });
@@ -242,6 +245,7 @@ async function scrapeBlog(url: string): Promise<ScrapedMetadata> {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       },
+      responseEncoding: 'utf8',
       timeout: 8000,
       maxContentLength: config.maxContentLength
     });
