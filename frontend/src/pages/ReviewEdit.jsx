@@ -29,32 +29,36 @@ export default function ReviewEdit({ jobData, jobId, onSaved, onCancel }) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
   const [edited, setEdited] = useState(false);
-
-  const confidence = recipe?.confidence_map || {};
+  const [confidenceMap, setConfidenceMap] = useState(recipe?.confidence_map || {});
 
   // Sayfa kapatılırken uyarı (FR-18)
   if (typeof window !== 'undefined' && edited) {
     window.onbeforeunload = () => true;
   }
 
-  const markEdited = () => setEdited(true);
+  const markEdited = (field) => {
+    setEdited(true);
+    if (field && confidenceMap[field] && confidenceMap[field] !== 'high') {
+      setConfidenceMap(prev => ({ ...prev, [field]: 'high' }));
+    }
+  };
 
   // --- Malzeme İşlemleri ---
   const updateIngredient = (index, field, value) => {
     const updated = [...ingredients];
     updated[index] = { ...updated[index], [field]: value };
     setIngredients(updated);
-    markEdited();
+    markEdited('ingredients');
   };
 
   const addIngredient = () => {
     setIngredients([...ingredients, { id: Date.now(), amount: '', unit: '', name: '' }]);
-    markEdited();
+    markEdited('ingredients');
   };
 
   const removeIngredient = (index) => {
     setIngredients(ingredients.filter((_, i) => i !== index));
-    markEdited();
+    markEdited('ingredients');
   };
 
   // --- Adım İşlemleri ---
@@ -62,17 +66,17 @@ export default function ReviewEdit({ jobData, jobId, onSaved, onCancel }) {
     const updated = [...steps];
     updated[index] = value;
     setSteps(updated);
-    markEdited();
+    markEdited('steps');
   };
 
   const addStep = () => {
     setSteps([...steps, '']);
-    markEdited();
+    markEdited('steps');
   };
 
   const removeStep = (index) => {
     setSteps(steps.filter((_, i) => i !== index));
-    markEdited();
+    markEdited('steps');
   };
 
   const moveStep = (from, to) => {
@@ -81,7 +85,7 @@ export default function ReviewEdit({ jobData, jobId, onSaved, onCancel }) {
     const [item] = updated.splice(from, 1);
     updated.splice(to, 0, item);
     setSteps(updated);
-    markEdited();
+    markEdited('steps');
   };
 
   // --- Kaydetme ---
@@ -134,7 +138,7 @@ export default function ReviewEdit({ jobData, jobId, onSaved, onCancel }) {
   };
 
   const getConfidenceBadge = (field) => {
-    const level = confidence[field];
+    const level = confidenceMap[field];
     if (!level || level === 'high') return null;
     return (
       <span className={`badge badge-${level}`} title={level === 'low' ? 'Kontrol et — yapay zekanın emin olamadığı alan' : 'Eksik — kaynakta bulunamadı'}>
@@ -177,7 +181,7 @@ export default function ReviewEdit({ jobData, jobId, onSaved, onCancel }) {
             <label className="input-label">Tarif Başlığı</label>
             {getConfidenceBadge('title')}
           </div>
-          <input className="input" value={title} onChange={e => { setTitle(e.target.value); markEdited(); }} id="review-title" />
+          <input className="input" value={title} onChange={e => { setTitle(e.target.value); markEdited('title'); }} id="review-title" />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
@@ -186,21 +190,21 @@ export default function ReviewEdit({ jobData, jobId, onSaved, onCancel }) {
               <label className="input-label">Porsiyon</label>
               {getConfidenceBadge('servings')}
             </div>
-            <input className="input" type="number" value={servings} onChange={e => { setServings(e.target.value); markEdited(); }} placeholder="—" id="review-servings" />
+            <input className="input" type="number" value={servings} onChange={e => { setServings(e.target.value); markEdited('servings'); }} placeholder="—" id="review-servings" />
           </div>
           <div className="input-group">
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               <label className="input-label">Hazırlık (dk)</label>
               {getConfidenceBadge('prep_time')}
             </div>
-            <input className="input" type="number" value={prepTime} onChange={e => { setPrepTime(e.target.value); markEdited(); }} placeholder="—" id="review-prep-time" />
+            <input className="input" type="number" value={prepTime} onChange={e => { setPrepTime(e.target.value); markEdited('prep_time'); }} placeholder="—" id="review-prep-time" />
           </div>
           <div className="input-group">
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               <label className="input-label">Pişirme (dk)</label>
               {getConfidenceBadge('cook_time')}
             </div>
-            <input className="input" type="number" value={cookTime} onChange={e => { setCookTime(e.target.value); markEdited(); }} placeholder="—" id="review-cook-time" />
+            <input className="input" type="number" value={cookTime} onChange={e => { setCookTime(e.target.value); markEdited('cook_time'); }} placeholder="—" id="review-cook-time" />
           </div>
         </div>
       </div>

@@ -18,6 +18,7 @@ export default function Dashboard({ onRecipeReady }) {
   const [jobStatus, setJobStatus] = useState(null);
   const [subStatus, setSubStatus] = useState(null);
   const [error, setError] = useState(null);
+  const [errorClass, setErrorClass] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const pollRef = useRef(null);
 
@@ -35,6 +36,7 @@ export default function Dashboard({ onRecipeReady }) {
         } else if (data.status === 'failed') {
           clearInterval(pollRef.current);
           setError(data.error_message || 'İşlem sırasında bir hata oluştu.');
+          setErrorClass(data.error_class || 'system_error');
           setJobId(null);
         } else if (data.status !== 'queued' && data.status !== 'processing') {
           // Tanımsız durum → jenerik "işleniyor" (FR-25)
@@ -56,14 +58,38 @@ export default function Dashboard({ onRecipeReady }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
+    setErrorClass(null);
     setIsSubmitting(true);
 
+    // İzin verilen sosyal medya alan adları (FR-1)
+    const allowedHosts = [
+      'youtube.com', 'youtu.be',
+      'instagram.com', 'tiktok.com',
+      'yemek.com', 'nefisyemektarifleri.com',
+      'lezzet.com.tr'
+    ];
+
     try {
-      // Basit client-side URL validation
+      // 1. URL biçim kontrolü
+      let parsedUrl;
       try {
-        new URL(url);
+        parsedUrl = new URL(url);
       } catch {
         setError('Lütfen geçerli bir link yapıştırın.');
+        setErrorClass('invalid_input');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 2. Sunucuya gitmeden alan adı kontrolü (FR-1)
+      const hostname = parsedUrl.hostname.toLowerCase();
+      const isAllowed = allowedHosts.some(domain => 
+        hostname === domain || hostname.endsWith('.' + domain)
+      );
+
+      if (!isAllowed) {
+        setError('Bu site şu anda desteklenmiyor. Lütfen YouTube, Instagram, TikTok veya desteklenen yemek blogu linklerini kullanın.');
+        setErrorClass('invalid_input');
         setIsSubmitting(false);
         return;
       }
@@ -72,6 +98,7 @@ export default function Dashboard({ onRecipeReady }) {
 
       if (result.error_class) {
         setError(result.message);
+        setErrorClass(result.error_class);
         setIsSubmitting(false);
         return;
       }
@@ -88,12 +115,14 @@ export default function Dashboard({ onRecipeReady }) {
       startPolling(result.jobId);
     } catch (err) {
       setError('Sunucuya bağlanılamadı. Lütfen backend\'in çalıştığından emin olun.');
+      setErrorClass('system_error');
     }
     setIsSubmitting(false);
   };
 
   const handleRetry = () => {
     setError(null);
+    setErrorClass(null);
     setJobId(null);
     setJobStatus(null);
     setSubStatus(null);
@@ -144,9 +173,9 @@ export default function Dashboard({ onRecipeReady }) {
           {error && (
             <div className="error-banner" style={{ maxWidth: 640, margin: '1rem auto 0' }}>
               <span>⚠️</span>
-              <span>{error}</span>
+              <span style={{ marginRight: 'var(--space-4)' }}>{error}</span>
               <button className="btn btn-sm btn-secondary" onClick={handleRetry} style={{ marginLeft: 'auto' }}>
-                Tekrar Dene
+                {errorClass === 'system_error' ? '🔄 Tekrar Dene' : '✕ Temizle'}
               </button>
             </div>
           )}

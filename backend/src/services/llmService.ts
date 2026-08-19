@@ -160,8 +160,61 @@ KURALLAR:
 
     const parsedJson = JSON.parse(responseText);
     const recipe = recipeZodSchema.parse(parsedJson) as ExtractedRecipe;
-    return recipe;
+    
+    // Zod doğrulamasından sonra kaynak metinle eşleştirerek halüsinasyon kontrolü yap (FR-9)
+    const validatedRecipe = validateHallucinations(recipe, text);
+    
+    return validatedRecipe;
   } catch (error: any) {
     throw new Error(`system_error: LLM extraction failed. Details: ${error.message}`);
   }
+}
+
+/**
+ * Kaynak metinde geçmeyen sayısal miktarları ve süreleri tespit eder,
+ * confidence_map alanlarını 'low' olarak işaretleyerek doğrulama katmanı (validation layer) görevi görür (FR-9).
+ */
+function validateHallucinations(recipe: ExtractedRecipe, sourceText: string): ExtractedRecipe {
+  // Metindeki tüm sayıları çıkar (örn: 1, 2.5, 0,5 vb.)
+  const numberRegex = /\b\d+(?:[.,]\d+)?\b/g;
+  const sourceNumbers = new Set<string>();
+  let match;
+  while ((match = numberRegex.exec(sourceText)) !== null) {
+    // Virgüllü sayıları nokta biçimine çevirip kaydet
+    const cleanedNum = parseFloat(match[0].replace(',', '.')).toString();
+    sourceNumbers.add(cleanedNum);
+  }
+
+  const checkNumber = (val: number | null | undefined, field: keyof ExtractedRecipe['confidence_map']) => {
+    if (val !== null && val !== undefined) {
+      const parsedVal = val.toString();
+      if (!sourceNumbers.has(parsedVal)) {
+        recipe.confidence_map[field] = 'low'; // Metinde geçmeyen sayıya low confidence ata
+      }
+    }
+  };
+
+  // 1. Porsiyon ve süre sayılarını doğrula
+  checkNumber(recipe.servings, 'servings');
+  checkNumber(recipe.prep_time, 'prep_time');
+  checkNumber(recipe.cook_time, 'cook_time');
+
+  // 2. Malzeme miktarlarını doğrula
+  if (recipe.ingredients && Array.isArray(recipe.ingredients)) {
+    let hasHallucinatedAmount = false;
+    for (const ing of recipe.ingredients) {
+      if (ing.amount !== null && ing.amount !== undefined) {
+        const parsedAmount = ing.amount.toString();
+        if (!sourceNumbers.has(parsedAmount)) {
+          hasHallucinatedAmount = true;
+          break;
+        }
+      }
+    }
+    if (hasHallucinatedAmount) {
+      recipe.confidence_map.ingredients = 'low';
+    }
+  }
+
+  return recipe;
 }

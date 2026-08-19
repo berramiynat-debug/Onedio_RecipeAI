@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 
 /**
- * Tarif Detay Sayfası (FR-20, FR-21)
+ * Tarif Detay ve Düzenleme Sayfası (FR-20, FR-21)
  */
 export default function RecipeDetail() {
   const { id } = useParams();
@@ -13,18 +13,35 @@ export default function RecipeDetail() {
   const [error, setError] = useState(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
+  // Düzenleme durumu ve alanları
+  const [isEditing, setIsEditing] = useState(false);
+  const [title, setTitle] = useState('');
+  const [servings, setServings] = useState('');
+  const [prepTime, setPrepTime] = useState('');
+  const [cookTime, setCookTime] = useState('');
+  const [ingredients, setIngredients] = useState([]);
+  const [steps, setSteps] = useState([]);
+
   useEffect(() => {
     loadRecipe();
   }, [id]);
 
   const loadRecipe = async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await api.getRecipeDetail(id);
       if (data.error) {
         setError(data.error);
       } else {
         setRecipe(data);
+        // Düzenleme formunu ilklendir
+        setTitle(data.title || '');
+        setServings(data.servings || '');
+        setPrepTime(data.prep_time || '');
+        setCookTime(data.cook_time || '');
+        setIngredients(data.ingredients || []);
+        setSteps(data.steps || []);
       }
     } catch {
       setError('Tarif yüklenirken bir hata oluştu.');
@@ -41,6 +58,46 @@ export default function RecipeDetail() {
     }
   };
 
+  const handleUpdate = async () => {
+    if (!title.trim()) {
+      setError('Tarif başlığı boş bırakılamaz.');
+      return;
+    }
+    if (ingredients.length === 0) {
+      setError('En az bir malzeme eklemelisiniz.');
+      return;
+    }
+    if (steps.length === 0 || steps.every(s => !s.trim())) {
+      setError('En az bir yapılış adımı eklemelisiniz.');
+      return;
+    }
+
+    try {
+      const payload = {
+        title: title.trim(),
+        servings: servings ? parseInt(servings, 10) : null,
+        prep_time: prepTime ? parseInt(prepTime, 10) : null,
+        cook_time: cookTime ? parseInt(cookTime, 10) : null,
+        ingredients: ingredients.map(ing => ({
+          amount: ing.amount ? parseFloat(ing.amount) : null,
+          unit: ing.unit || null,
+          name: ing.name
+        })),
+        steps: steps.filter(s => s.trim())
+      };
+
+      const res = await api.updateRecipe(id, payload);
+      if (res.error) {
+        setError(res.error);
+      } else {
+        setIsEditing(false);
+        loadRecipe();
+      }
+    } catch {
+      setError('Tarif güncellenirken bir hata oluştu.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="empty-state fade-in">
@@ -50,7 +107,7 @@ export default function RecipeDetail() {
     );
   }
 
-  if (error) {
+  if (error && !isEditing) {
     return (
       <div className="empty-state fade-in">
         <div className="empty-state__icon">😟</div>
@@ -62,10 +119,121 @@ export default function RecipeDetail() {
     );
   }
 
-  const confidenceMap = typeof recipe.confidence_map === 'string' 
-    ? JSON.parse(recipe.confidence_map) 
-    : recipe.confidence_map;
+  // --- DÜZENLEME MODU ARAYÜZÜ ---
+  if (isEditing) {
+    return (
+      <div className="fade-in" style={{ maxWidth: 720, margin: '0 auto' }}>
+        <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700, color: 'var(--color-navy)', marginBottom: 'var(--space-4)' }}>
+          Tarifi Düzenle
+        </h1>
 
+        {error && (
+          <div className="error-banner" style={{ marginBottom: 'var(--space-4)' }}>
+            <span>⚠️</span> <span>{error}</span>
+          </div>
+        )}
+
+        <div className="card" style={{ marginBottom: 'var(--space-4)' }}>
+          <div className="input-group">
+            <label className="input-label">Tarif Başlığı</label>
+            <input className="input" value={title} onChange={e => setTitle(e.target.value)} />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+            <div className="input-group">
+              <label className="input-label">Porsiyon</label>
+              <input className="input" type="number" value={servings} onChange={e => setServings(e.target.value)} placeholder="—" />
+            </div>
+            <div className="input-group">
+              <label className="input-label">Hazırlık (dk)</label>
+              <input className="input" type="number" value={prepTime} onChange={e => setPrepTime(e.target.value)} placeholder="—" />
+            </div>
+            <div className="input-group">
+              <label className="input-label">Pişirme (dk)</label>
+              <input className="input" type="number" value={cookTime} onChange={e => setCookTime(e.target.value)} placeholder="—" />
+            </div>
+          </div>
+        </div>
+
+        {/* Malzemeler */}
+        <div className="card" style={{ marginBottom: 'var(--space-4)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
+            <h2 className="card-title">🥕 Malzemeler</h2>
+            <button className="btn btn-sm btn-secondary" onClick={() => setIngredients([...ingredients, { amount: '', unit: '', name: '' }])}>+ Ekle</button>
+          </div>
+          {ingredients.map((ing, idx) => (
+            <div key={idx} style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-2)', alignItems: 'center' }}>
+              <input
+                className="input"
+                style={{ width: 80 }}
+                placeholder="Miktar"
+                value={ing.amount || ''}
+                onChange={e => {
+                  const copy = [...ingredients];
+                  copy[idx] = { ...copy[idx], amount: e.target.value };
+                  setIngredients(copy);
+                }}
+              />
+              <input
+                className="input"
+                style={{ width: 110 }}
+                placeholder="Birim"
+                value={ing.unit || ''}
+                onChange={e => {
+                  const copy = [...ingredients];
+                  copy[idx] = { ...copy[idx], unit: e.target.value };
+                  setIngredients(copy);
+                }}
+              />
+              <input
+                className="input"
+                style={{ flex: 1 }}
+                placeholder="Malzeme adı"
+                value={ing.name || ''}
+                onChange={e => {
+                  const copy = [...ingredients];
+                  copy[idx] = { ...copy[idx], name: e.target.value };
+                  setIngredients(copy);
+                }}
+              />
+              <button className="btn btn-sm btn-danger" onClick={() => setIngredients(ingredients.filter((_, i) => i !== idx))}>✕</button>
+            </div>
+          ))}
+        </div>
+
+        {/* Adımlar */}
+        <div className="card" style={{ marginBottom: 'var(--space-4)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-4)' }}>
+            <h2 className="card-title">📝 Yapılış Adımları</h2>
+            <button className="btn btn-sm btn-secondary" onClick={() => setSteps([...steps, ''])}>+ Ekle</button>
+          </div>
+          {steps.map((step, idx) => (
+            <div key={idx} style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-2)', alignItems: 'flex-start' }}>
+              <span style={{ fontWeight: 600, color: 'var(--color-orange)', minWidth: 24, paddingTop: 10 }}>{idx + 1}.</span>
+              <textarea
+                className="input"
+                style={{ flex: 1, minHeight: 60 }}
+                value={step}
+                onChange={e => {
+                  const copy = [...steps];
+                  copy[idx] = e.target.value;
+                  setSteps(copy);
+                }}
+              />
+              <button className="btn btn-sm btn-danger" onClick={() => setSteps(steps.filter((_, i) => i !== idx))} style={{ marginTop: 4 }}>✕</button>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end' }}>
+          <button className="btn btn-lg btn-secondary" onClick={() => { setIsEditing(false); loadRecipe(); }}>İptal</button>
+          <button className="btn btn-lg btn-primary" onClick={handleUpdate}>Değişiklikleri Kaydet</button>
+        </div>
+      </div>
+    );
+  }
+
+  // --- GÖRÜNTÜLEME MODU ARAYÜZÜ ---
   return (
     <div className="fade-in" style={{ maxWidth: 720, margin: '0 auto' }}>
       {/* Başlık ve Aksiyonlar */}
@@ -79,6 +247,9 @@ export default function RecipeDetail() {
           </h1>
         </div>
         <div style={{ display: 'flex', gap: 'var(--space-2)', flexShrink: 0 }}>
+          <button className="btn btn-sm btn-secondary" onClick={() => setIsEditing(true)}>
+            ✏️ Düzenle
+          </button>
           <button className="btn btn-sm btn-danger" onClick={() => setShowDeleteConfirm(true)} id="delete-recipe-button">
             🗑️ Sil
           </button>

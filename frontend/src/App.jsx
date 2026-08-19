@@ -39,6 +39,18 @@ function AppContent() {
     navigate('/login');
   };
 
+  const handleNavClick = (e, path) => {
+    if (reviewData) {
+      e.preventDefault();
+      const confirmLeave = window.confirm("Kaydedilmemiş tarif düzenleme değişiklikleriniz var. Çıkmak istediğinizden emin misiniz?");
+      if (confirmLeave) {
+        setReviewData(null);
+        setReviewJobId(null);
+        navigate(path);
+      }
+    }
+  };
+
   const handleRecipeReady = (jobData, jobId) => {
     setReviewData(jobData);
     setReviewJobId(jobId);
@@ -62,7 +74,7 @@ function AppContent() {
     <div className="app-layout">
       {/* Header */}
       <header className="app-header">
-        <NavLink to="/" className="app-header__logo">
+        <NavLink to="/" className="app-header__logo" onClick={(e) => handleNavClick(e, '/')}>
           <img src="/logo.png" alt="Oneyiyo Logo" />
           <span className="app-header__title">Oneyi<span>yo</span></span>
         </NavLink>
@@ -72,12 +84,14 @@ function AppContent() {
             <NavLink
               to="/"
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              onClick={(e) => handleNavClick(e, '/')}
             >
               🍳 Tarif Ekle
             </NavLink>
             <NavLink
               to="/collection"
               className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              onClick={(e) => handleNavClick(e, '/collection')}
             >
               📚 Koleksiyonum
             </NavLink>
