@@ -30,25 +30,36 @@ function extractMetaTag(html: string, propertyOrName: string): string {
 }
 
 /**
- * Blog sayfalarından ana metin içeriğini çıkarmaya çalışır (p etiketleri, article tag'leri vb.)
+ * HTML kodundaki script, style ve yorum etiketlerini temizler.
+ */
+function cleanHtml(html: string): string {
+  return html
+    .replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '')
+    .replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '');
+}
+
+/**
+ * Blog sayfalarından ana metin içeriğini çıkarmaya çalışır (p ve li etiketleri)
  */
 function extractBlogBody(html: string): string {
-  // Basitçe <p> etiketleri içerisindeki yazıları topla
-  const pRegex = /<p[^>]*>([\s\S]*?)<\/p>/gi;
+  const cleaned = cleanHtml(html);
+  // <p> ve <li> etiketleri içerisindeki yazıları topla
+  const regex = /<(p|li)[^>]*>([\s\S]*?)<\/\1>/gi;
   let match;
-  const paragraphs: string[] = [];
+  const blocks: string[] = [];
   
-  while ((match = pRegex.exec(html)) !== null) {
-    let text = match[1]
+  while ((match = regex.exec(cleaned)) !== null) {
+    let text = match[2]
       .replace(/<[^>]*>/g, '') // İçerideki HTML tag'lerini temizle
       .replace(/\s+/g, ' ')
       .trim();
-    if (text.length > 20) { // Çok kısa paragrafları/buton metinlerini atla
-      paragraphs.push(text);
+    if (text.length > 3) { // Kısa malzemeleri (örn: "tuz", "1 yumurta") kaçırmamak için sınırı 3 yaptık
+      blocks.push(text);
     }
   }
 
-  return paragraphs.join('\n\n');
+  return blocks.join('\n');
 }
 
 /**
@@ -86,8 +97,21 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
       title = titleMatch ? titleMatch[1].replace(' - YouTube', '').trim() : 'YouTube Videosu';
     }
 
-    // YouTube HTML içindeki description tag'i tam video açıklamasını içerir
-    const description = extractMetaTag(html, 'description') || extractMetaTag(html, 'og:description');
+    // YouTube video açıklamasını ytInitialPlayerResponse içinden eksiksiz çekmeye çalış
+    let description = '';
+    const playerResponseMatch = html.match(/ytInitialPlayerResponse\s*=\s*({[\s\S]*?});/);
+    if (playerResponseMatch) {
+      try {
+        const json = JSON.parse(playerResponseMatch[1]);
+        description = json.videoDetails?.shortDescription || '';
+      } catch (e) {
+        // JSON parse hatası durumunda fallback'e geç
+      }
+    }
+
+    if (!description) {
+      description = extractMetaTag(html, 'description') || extractMetaTag(html, 'og:description');
+    }
 
     return {
       title,
