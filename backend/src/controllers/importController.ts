@@ -17,14 +17,8 @@ async function runImportJob(jobId: string, initialUrl: string) {
     // 1. Durumu processing yap (sub_status: fetching)
     await jobRepo.updateJobStatus(jobId, 'processing', 'fetching');
 
-    // 2. Kısa linkleri çöz (TikTok vb.) ve SSRF doğrulaması yap (SEC-3)
-    const resolvedUrl = await resolveRedirectsSafely(initialUrl);
-
-    // 3. Linki sadeleştir (Canonicalize)
-    const canonicalUrl = canonicalizeUrl(resolvedUrl);
-
-    // 4. İçerik toplama (Scraping)
-    const scrapedData = await scrapeUrl(canonicalUrl);
+    // 2. İçerik toplama (Scraping) - Canonical URL artık argüman olarak geliyor
+    const scrapedData = await scrapeUrl(initialUrl);
 
     // 5. Durumu güncelle (sub_status: extracting)
     await jobRepo.updateJobStatus(jobId, 'processing', 'extracting');
@@ -130,8 +124,11 @@ export const importController = {
         return;
       }
 
+      // 1.5 Kısa linkleri çöz (TikTok vb.) ve SSRF doğrulaması yap (SEC-3)
+      const resolvedUrl = await resolveRedirectsSafely(url);
+
       // 2. Mükerrer Kontrolü (FR-4): Aynı link daha önce eklenmiş mi?
-      const cleanUrl = canonicalizeUrl(url);
+      const cleanUrl = canonicalizeUrl(resolvedUrl);
       const existingRecipe = await jobRepo.getRecipeByUrl(DEMO_USER_ID, cleanUrl);
       if (existingRecipe) {
         res.status(200).json({
@@ -149,7 +146,14 @@ export const importController = {
       await jobRepo.createJob(jobId, DEMO_USER_ID, cleanUrl);
 
       // 5. Arka plan işçisini asenkron olarak tetikle (await etmiyoruz!)
-      runImportJob(jobId, url);
+      // Timeout wrap (SEC-9)
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('job_timeout: İşlem çok uzun sürdü.')), config.jobTimeoutMs);
+      });
+      Promise.race([runImportJob(jobId, cleanUrl), timeoutPromise]).catch(async (error: any) => {
+        console.error(`Job ${jobId} failed via timeout/unhandled error:`, error.message);
+        await jobRepo.updateJobStatus(jobId, 'failed', null, 'system_error', error.message || 'Zaman aşımı veya beklenmeyen hata.');
+      });
 
       // 6. Hemen 202 Accepted dön (FR-23)
       res.status(202).json({

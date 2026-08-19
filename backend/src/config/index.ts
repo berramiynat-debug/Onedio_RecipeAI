@@ -15,7 +15,9 @@ export const config = {
   },
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   // İzin verilen sosyal medya alan adları
-  domainAllowlist: [
+  domainAllowlist: process.env.ALLOWED_DOMAINS 
+    ? process.env.ALLOWED_DOMAINS.split(',').map(d => d.trim())
+    : [
     'instagram.com',
     'www.instagram.com',
     'tiktok.com',
@@ -23,8 +25,13 @@ export const config = {
     'vm.tiktok.com',
     'youtube.com',
     'www.youtube.com',
-    'youtu.be'
+    'youtu.be',
+    'nefisyemektarifleri.com',
+    'yemek.com',
+    'lezzet.com.tr'
   ],
+  rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '10', 10),
+  maxContentLength: parseInt(process.env.MAX_CONTENT_LENGTH || '5242880', 10), // 5MB
   // Timeout süreleri (milisaniye cinsinden)
   jobTimeoutMs: 60000, // 60 saniye
 };

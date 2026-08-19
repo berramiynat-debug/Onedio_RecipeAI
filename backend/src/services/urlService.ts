@@ -22,7 +22,7 @@ export function canonicalizeUrl(urlStr: string): string {
       return `https://www.youtube.com/watch?v=${videoId}`;
     }
     
-    if (host.includes('youtube.com')) {
+    if (host.includes('youtube.com') || host === 'm.youtube.com') {
       if (path.startsWith('/shorts/')) {
         const videoId = path.split('/')[2];
         return `https://www.youtube.com/watch?v=${videoId}`;
@@ -38,9 +38,9 @@ export function canonicalizeUrl(urlStr: string): string {
 
     // 2. Instagram Canonicalization (FR-2)
     if (host.includes('instagram.com')) {
-      // /reel/C3abc/ veya /p/C3abc/ -> /p/C3abc/
+      // /reel/C3abc/, /reels/C3abc/ or /p/C3abc/ -> /p/C3abc/
       const parts = path.split('/').filter(Boolean);
-      if (parts.length >= 2 && ['p', 'reel', 'tv'].includes(parts[0])) {
+      if (parts.length >= 2 && ['p', 'reel', 'reels', 'tv'].includes(parts[0])) {
         const shortcode = parts[1];
         return `https://www.instagram.com/p/${shortcode}/`;
       }

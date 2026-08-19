@@ -1,4 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
+import { z } from 'zod';
 import { config } from '../config';
 
 // Gemini istemcisini ilklendir
@@ -99,6 +100,28 @@ const recipeSchema = {
   required: ['is_recipe', 'title', 'ingredients', 'steps', 'confidence_map']
 };
 
+const recipeZodSchema = z.object({
+  is_recipe: z.boolean(),
+  title: z.string(),
+  servings: z.number().nullable(),
+  prep_time: z.number().nullable(),
+  cook_time: z.number().nullable(),
+  ingredients: z.array(z.object({
+    amount: z.number().nullable(),
+    unit: z.string().nullable(),
+    name: z.string()
+  })),
+  steps: z.array(z.string()),
+  confidence_map: z.object({
+    title: z.enum(['high', 'low', 'missing']),
+    servings: z.enum(['high', 'low', 'missing']),
+    prep_time: z.enum(['high', 'low', 'missing']),
+    cook_time: z.enum(['high', 'low', 'missing']),
+    ingredients: z.enum(['high', 'low', 'missing']),
+    steps: z.enum(['high', 'low', 'missing']),
+  })
+});
+
 /**
  * Ham metinden yapay zeka kullanarak Türkçe tarif verilerini ayıklar (FR-7 - FR-14)
  */
@@ -107,7 +130,7 @@ export async function extractRecipeFromText(text: string): Promise<ExtractedReci
     throw new Error('system_error: Gemini API Key is missing in the configuration.');
   }
 
-  const prompt = `
+  const systemInstruction = `
 Aşağıda verilen ham metni analiz et ve içerisinden yemek tarifini çıkar.
 
 KURALLAR:
@@ -116,18 +139,14 @@ KURALLAR:
 3. Türkçe karşılığı olmayan malzemeleri uydurma çeviri yapmak yerine orijinal adı ve parantez içinde kısa bir açıklamasıyla bırak (Örn: "Maple Syrup (Akçaağaç Şurubu)"). (FR-14)
 4. Kaynak metinde belirtilmeyen hiçbir miktar, süre veya porsiyon bilgisini uydurma (Halüsinasyon yasak!). Kaynakta yoksa null bırak ve confidence_map değerini 'missing' yap. (FR-9)
 5. Metin bir yemek tarifi içermiyorsa (örneğin sadece restoran yorumu, gezi vlogu veya alakasız bir yazıysa), is_recipe alanını kesinlikle false olarak işaretle. (FR-10)
-
-Ham Metin:
-"""
-${text}
-"""
 `;
 
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
-      contents: prompt,
+      contents: text,
       config: {
+        systemInstruction,
         responseMimeType: 'application/json',
         responseSchema: recipeSchema as any,
         temperature: 0.1 // Daha kararlı ve tutarlı çıktılar için düşük sıcaklık
@@ -139,7 +158,8 @@ ${text}
       throw new Error('LLM returned an empty response.');
     }
 
-    const recipe = JSON.parse(responseText) as ExtractedRecipe;
+    const parsedJson = JSON.parse(responseText);
+    const recipe = recipeZodSchema.parse(parsedJson) as ExtractedRecipe;
     return recipe;
   } catch (error: any) {
     throw new Error(`system_error: LLM extraction failed. Details: ${error.message}`);

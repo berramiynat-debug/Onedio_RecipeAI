@@ -1,5 +1,7 @@
 import axios from 'axios';
 import { parse } from 'url';
+import { validateUrlForSsrf } from './securityService';
+import { config } from '../config';
 
 export interface ScrapedMetadata {
   title: string;
@@ -60,7 +62,11 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
     let author = 'Bilinmeyen Yazar';
     
     try {
-      const { data } = await axios.get(oembedUrl, { timeout: 5000 });
+      await validateUrlForSsrf(oembedUrl);
+      const { data } = await axios.get(oembedUrl, { 
+        timeout: 5000, 
+        maxContentLength: config.maxContentLength 
+      });
       title = data.title || '';
       author = data.author_name || 'Bilinmeyen Yazar';
     } catch (e) {
@@ -68,9 +74,11 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
     }
 
     // 2. HTML'i çekip açıklama kısmını alalım
+    await validateUrlForSsrf(url);
     const { data: html } = await axios.get(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-      timeout: 8000
+      timeout: 8000,
+      maxContentLength: config.maxContentLength
     });
 
     if (!title) {
@@ -99,12 +107,14 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
 async function scrapeInstagram(url: string): Promise<ScrapedMetadata> {
   try {
     // Instagram korumaları nedeniyle doğrudan HTML çekip Open Graph okumak en pratik çözümdür
+    await validateUrlForSsrf(url);
     const { data: html } = await axios.get(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
       },
-      timeout: 8000
+      timeout: 8000,
+      maxContentLength: config.maxContentLength
     });
 
     const ogTitle = extractMetaTag(html, 'og:title');
@@ -152,7 +162,11 @@ async function scrapeTikTok(url: string): Promise<ScrapedMetadata> {
     // 1. oEmbed API'sini dene
     try {
       const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`;
-      const { data } = await axios.get(oembedUrl, { timeout: 5000 });
+      await validateUrlForSsrf(oembedUrl);
+      const { data } = await axios.get(oembedUrl, { 
+        timeout: 5000,
+        maxContentLength: config.maxContentLength
+      });
       title = data.title || '';
       author = data.author_name || 'TikTok Üreticisi';
     } catch (e) {
@@ -160,12 +174,14 @@ async function scrapeTikTok(url: string): Promise<ScrapedMetadata> {
     }
 
     // 2. HTML'i indirip Open Graph tag'lerini parse edelim
+    await validateUrlForSsrf(url);
     const { data: html } = await axios.get(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
       },
-      timeout: 8000
+      timeout: 8000,
+      maxContentLength: config.maxContentLength
     });
 
     const ogTitle = extractMetaTag(html, 'og:title');
@@ -193,11 +209,13 @@ async function scrapeTikTok(url: string): Promise<ScrapedMetadata> {
  */
 async function scrapeBlog(url: string): Promise<ScrapedMetadata> {
   try {
+    await validateUrlForSsrf(url);
     const { data: html } = await axios.get(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       },
-      timeout: 8000
+      timeout: 8000,
+      maxContentLength: config.maxContentLength
     });
 
     // Başlığı Open Graph'tan veya title etiketinden al

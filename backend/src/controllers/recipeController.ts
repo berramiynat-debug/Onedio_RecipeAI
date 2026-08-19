@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { z } from 'zod';
 import pool from '../database/db';
 import { jobRepo } from '../database/repos';
 
@@ -13,12 +14,27 @@ export const recipeController = {
   async saveRecipe(req: Request, res: Response): Promise<void> {
     const connection = await pool.getConnection();
     try {
-      const { jobId, title, servings, prep_time, cook_time, ingredients, steps } = req.body;
+    const saveRecipeSchema = z.object({
+      jobId: z.string(),
+      title: z.string().min(1),
+      servings: z.number().nullable().optional(),
+      prep_time: z.number().nullable().optional(),
+      cook_time: z.number().nullable().optional(),
+      ingredients: z.array(z.object({
+        amount: z.number().nullable().optional(),
+        unit: z.string().nullable().optional(),
+        name: z.string().min(1)
+      })).min(1),
+      steps: z.array(z.string().min(1)).min(1)
+    });
 
-      if (!jobId || !title || !ingredients || !steps) {
-        res.status(400).json({ error: 'Eksik parametre gönderildi. jobId, title, ingredients ve steps zorunludur.' });
-        return;
-      }
+    const validationResult = saveRecipeSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      res.status(400).json({ error: 'Eksik veya geçersiz parametre gönderildi.', details: validationResult.error.errors });
+      return;
+    }
+
+    const { jobId, title, servings, prep_time, cook_time, ingredients, steps } = validationResult.data;
 
       // 1. İlgili asenkron işi (job) kontrol et
       const job = await jobRepo.getJob(jobId);
