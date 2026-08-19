@@ -23,7 +23,11 @@ export default function ReviewEdit({ jobData, jobId, onSaved, onCancel }) {
   const [prepTime, setPrepTime] = useState(recipe?.prep_time || '');
   const [cookTime, setCookTime] = useState(recipe?.cook_time || '');
   const [ingredients, setIngredients] = useState(
-    recipe?.ingredients?.map((ing, i) => ({ ...ing, id: i })) || []
+    recipe?.ingredients?.map((ing, i) => ({
+      ...ing,
+      id: i,
+      amount: ing.amount ? parseFloat(ing.amount).toString() : ''
+    })) || []
   );
   const [steps, setSteps] = useState(recipe?.steps || []);
   const [isSaving, setIsSaving] = useState(false);

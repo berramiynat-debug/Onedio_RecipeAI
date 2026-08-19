@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../utils/api';
 
 export default function Register() {
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
@@ -14,7 +15,7 @@ export default function Register() {
     setError(null);
     setLoading(true);
     try {
-      await api.register(email, password);
+      await api.register(username, email, password);
       // Auto redirect to login after successful register
       navigate('/login');
     } catch (err) {
@@ -38,6 +39,20 @@ export default function Register() {
 
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <div className="input-group">
+          <label className="input-label" htmlFor="username">Kullanıcı Adı</label>
+          <input
+            id="username"
+            type="text"
+            className="input"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            required
+            minLength={3}
+            placeholder="ör: ahmet123"
+          />
+        </div>
+
+        <div className="input-group">
           <label className="input-label" htmlFor="email">E-posta</label>
           <input
             id="email"
@@ -46,6 +61,7 @@ export default function Register() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
+            placeholder="ör: ahmet@example.com"
           />
         </div>
         

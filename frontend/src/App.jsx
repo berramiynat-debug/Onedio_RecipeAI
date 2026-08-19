@@ -97,7 +97,7 @@ function AppContent() {
             </NavLink>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '1rem', paddingLeft: '1rem', borderLeft: '1px solid var(--color-border-light)' }}>
               <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                {user.email}
+                👤 {user.username || user.email}
               </span>
               <button onClick={handleLogout} className="btn btn-secondary btn-sm" style={{ padding: '0.25rem 0.75rem' }}>
                 Çıkış Yap

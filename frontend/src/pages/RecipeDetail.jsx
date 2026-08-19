@@ -40,7 +40,10 @@ export default function RecipeDetail() {
         setServings(data.servings || '');
         setPrepTime(data.prep_time || '');
         setCookTime(data.cook_time || '');
-        setIngredients(data.ingredients || []);
+        setIngredients(data.ingredients?.map(ing => ({
+          ...ing,
+          amount: ing.amount ? parseFloat(ing.amount).toString() : ''
+        })) || []);
         setSteps(data.steps || []);
       }
     } catch {
@@ -298,7 +301,7 @@ export default function RecipeDetail() {
           {recipe.ingredients?.map((ing, i) => (
             <li key={i} style={{ padding: 'var(--space-2) 0', borderBottom: '1px solid var(--color-border-light)', display: 'flex', gap: 'var(--space-2)' }}>
               <span style={{ color: 'var(--color-orange)', fontWeight: 600, minWidth: 80 }}>
-                {ing.amount ? `${ing.amount} ${ing.unit || ''}` : ''}
+                {ing.amount ? `${parseFloat(ing.amount)} ${ing.unit || ''}` : ''}
               </span>
               <span>{ing.name}</span>
             </li>

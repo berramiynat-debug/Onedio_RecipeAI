@@ -35,6 +35,12 @@ export async function initDb() {
     // column already exists, safe to ignore
   }
 
+  try {
+    await pool.query('ALTER TABLE users ADD COLUMN username VARCHAR(255) NULL');
+  } catch (e) {
+    // column already exists, safe to ignore
+  }
+
   // 2. Import Jobs (Asenkron İş Takip) Tablosu
   await pool.query(`
     CREATE TABLE IF NOT EXISTS import_jobs (
