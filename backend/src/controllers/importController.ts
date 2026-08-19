@@ -3,6 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { canonicalizeUrl, isAllowedDomain, resolveRedirectsSafely } from '../services/urlService';
 import { jobRepo } from '../database/repos';
 import { scrapeUrl } from '../services/scraperService';
+import { extractRecipeFromText } from '../services/llmService';
+import { config } from '../config';
 
 // Sabit demo kullanıcı ID'si (Bölüm 5.2 - Tek kullanıcılı demo)
 const DEMO_USER_ID = 1;
@@ -27,29 +29,48 @@ async function runImportJob(jobId: string, initialUrl: string) {
     // 5. Durumu güncelle (sub_status: extracting)
     await jobRepo.updateJobStatus(jobId, 'processing', 'extracting');
 
-    // 6. LLM ile tarif çıkarma (Bu aşama 2. Hafta entegre edilecek)
-    // Şimdilik 1. Hafta isterleri için geçici bir taslak (mock) tarif verisi oluşturuyoruz
-    const mockRecipeData = {
-      title: scrapedData.title,
-      servings: 4,
-      prep_time: 15,
-      cook_time: 20,
-      platform: scrapedData.platform,
-      author: scrapedData.author,
-      original_url: scrapedData.originalUrl,
-      confidence_map: {
-        title: 'high',
-        ingredients: 'low',
-        steps: 'low'
-      },
-      ingredients: [
-        { amount: 1, unit: 'adet', name: 'Örnek Malzeme (Yapay Zeka Entegrasyonu Bekleniyor)' }
-      ],
-      steps: [
-        'Kaynak gönderinin açıklaması okundu. 2. hafta LLM entegrasyonu tamamlandığında tam tarif çıkarılacaktır.',
-        `Ham İçerik: ${scrapedData.content.substring(0, 150)}...`
-      ]
-    };
+    let recipeData: any;
+
+    if (config.geminiApiKey) {
+      // 6. LLM ile tarif çıkarma
+      const recipe = await extractRecipeFromText(scrapedData.content);
+
+      // Eğer tarif değilse reddet (FR-10)
+      if (!recipe.is_recipe) {
+        throw new Error('no_recipe: Metinde yemek tarifi bulunamadı.');
+      }
+
+      // Orijinal kaynak atıflarını güvenilir metadata'dan ezerek eşle (SEC-6, FR-16)
+      recipeData = {
+        ...recipe,
+        platform: scrapedData.platform,
+        author: scrapedData.author,
+        original_url: scrapedData.originalUrl
+      };
+    } else {
+      // Şimdilik API anahtarı eklenmemişse 1. Hafta fallback mock verisi oluştur
+      recipeData = {
+        title: scrapedData.title,
+        servings: 4,
+        prep_time: 15,
+        cook_time: 20,
+        platform: scrapedData.platform,
+        author: scrapedData.author,
+        original_url: scrapedData.originalUrl,
+        confidence_map: {
+          title: 'high',
+          ingredients: 'low',
+          steps: 'low'
+        },
+        ingredients: [
+          { amount: 1, unit: 'adet', name: 'Örnek Malzeme (Yapay Zeka API Anahtarı Bekleniyor)' }
+        ],
+        steps: [
+          'Kaynak gönderinin açıklaması okundu. Gemini API Anahtarı .env dosyasında eksik olduğu için mock tarif döndürüldü.',
+          `Ham İçerik: ${scrapedData.content.substring(0, 150)}...`
+        ]
+      };
+    }
 
     // 7. İşlemi tamamla (ready_for_review)
     await jobRepo.updateJobStatus(
@@ -58,7 +79,7 @@ async function runImportJob(jobId: string, initialUrl: string) {
       null, 
       null, 
       null, 
-      mockRecipeData
+      recipeData
     );
 
   } catch (error: any) {
@@ -74,6 +95,9 @@ async function runImportJob(jobId: string, initialUrl: string) {
     } else if (error.message.includes('SSRF')) {
       errorClass = 'invalid_input';
       errorMessage = 'Güvenlik nedeniyle bu URL adresine erişim engellendi.';
+    } else if (error.message.includes('no_recipe')) {
+      errorClass = 'no_recipe';
+      errorMessage = 'Bu içerikte yemek tarifi bulamadık (Restoran incelemesi veya alakasız içerik).';
     }
 
     await jobRepo.updateJobStatus(jobId, 'failed', null, errorClass, errorMessage);
