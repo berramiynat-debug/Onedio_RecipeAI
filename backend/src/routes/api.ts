@@ -30,4 +30,24 @@ router.get('/recipes/:id', authenticateToken, recipeController.getRecipeDetail);
 router.put('/recipes/:id', authenticateToken, recipeController.updateRecipe);
 router.delete('/recipes/:id', authenticateToken, recipeController.deleteRecipe);
 
+import { scrapeUrl } from '../services/scraperService';
+
+router.get('/debug-scrape', async (req, res) => {
+  const { url } = req.query;
+  if (!url) return res.status(400).json({ error: 'url parameter is required' });
+  try {
+    const data = await scrapeUrl(url as string);
+    res.json({
+      title: data.title,
+      author: data.author,
+      platform: data.platform,
+      originalUrl: data.originalUrl,
+      contentLength: data.content.length,
+      contentPreview: data.content.substring(0, 1000)
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;
