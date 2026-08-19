@@ -8,6 +8,7 @@ export async function initDb() {
     port: config.db.port,
     user: config.db.user,
     password: config.db.password,
+    charset: 'utf8mb4',
   });
 
   console.log(`Checking/Creating database: ${config.db.database}...`);

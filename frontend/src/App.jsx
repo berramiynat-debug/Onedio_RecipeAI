@@ -53,6 +53,10 @@ function AppContent() {
             jobData={reviewData}
             jobId={reviewJobId}
             onSaved={handleRecipeSaved}
+            onCancel={() => {
+              setReviewData(null);
+              setReviewJobId(null);
+            }}
           />
         ) : (
           <Routes>

@@ -4,10 +4,19 @@ import { api } from '../utils/api';
 /**
  * Zorunlu düzenlenebilir önizleme ekranı (FR-15 — FR-18)
  */
-export default function ReviewEdit({ jobData, jobId, onSaved }) {
+export default function ReviewEdit({ jobData, jobId, onSaved, onCancel }) {
   const recipe = typeof jobData.recipe_data === 'string' 
     ? JSON.parse(jobData.recipe_data) 
     : jobData.recipe_data;
+
+  const handleCancel = () => {
+    if (edited) {
+      const confirmCancel = window.confirm("Değişiklikleri kaydetmeden çıkmak istediğinizden emin misiniz?");
+      if (!confirmCancel) return;
+    }
+    window.onbeforeunload = null;
+    onCancel();
+  };
 
   const [title, setTitle] = useState(recipe?.title || '');
   const [servings, setServings] = useState(recipe?.servings || '');
@@ -262,8 +271,11 @@ export default function ReviewEdit({ jobData, jobId, onSaved }) {
         ))}
       </div>
 
-      {/* Kaydet Butonu */}
+      {/* Butonlar */}
       <div style={{ display: 'flex', gap: 'var(--space-3)', justifyContent: 'flex-end' }}>
+        <button className="btn btn-lg btn-secondary" onClick={handleCancel} disabled={isSaving} id="cancel-recipe-button">
+          ✕ İptal Et
+        </button>
         <button className="btn btn-lg btn-primary" onClick={handleSave} disabled={isSaving} id="save-recipe-button">
           {isSaving ? '⏳ Kaydediliyor...' : '✅ Onayla ve Kaydet'}
         </button>
