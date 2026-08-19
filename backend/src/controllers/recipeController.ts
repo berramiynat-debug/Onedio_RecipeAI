@@ -3,8 +3,7 @@ import { z } from 'zod';
 import pool from '../database/db';
 import { jobRepo } from '../database/repos';
 
-// Sabit stajyer kullanıcı ID'si (Tek kullanıcılı demo)
-const DEMO_USER_ID = 1;
+// Sabit stajyer kullanıcı ID'si silindi
 
 export const recipeController = {
   /**
@@ -58,11 +57,12 @@ export const recipeController = {
       // 2. İşlemleri Transaction ile başlat (Güvenli yazma)
       await connection.beginTransaction();
 
+      const userId = (req as any).user.id;
       // a. Recipes tablosuna ekle
       const [recipeResult]: any = await connection.query(
         `INSERT INTO recipes (user_id, title, servings, prep_time, cook_time, platform, author, original_url, confidence_map) 
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [DEMO_USER_ID, title, servings || null, prep_time || null, cook_time || null, platform, author, originalUrl, confidenceMap]
+        [userId, title, servings || null, prep_time || null, cook_time || null, platform, author, originalUrl, confidenceMap]
       );
       
       const recipeId = recipeResult.insertId;
@@ -118,8 +118,9 @@ export const recipeController = {
       const order = req.query.order === 'asc' ? 'ASC' : 'DESC';
       const search = req.query.search ? `%${req.query.search}%` : null;
 
+      const userId = (req as any).user.id;
       let query = `SELECT * FROM recipes WHERE user_id = ?`;
-      const queryParams: any[] = [DEMO_USER_ID];
+      const queryParams: any[] = [userId];
 
       if (search) {
         query += ` AND (title LIKE ? OR author LIKE ?)`;
@@ -148,10 +149,11 @@ export const recipeController = {
         return;
       }
 
+      const userId = (req as any).user.id;
       // 1. Tarifi çek
       const [recipes]: any = await pool.query(
         'SELECT * FROM recipes WHERE id = ? AND user_id = ?',
-        [id, DEMO_USER_ID]
+        [id, userId]
       );
 
       if (recipes.length === 0) {
@@ -200,10 +202,11 @@ export const recipeController = {
         return;
       }
 
+      const userId = (req as any).user.id;
       // Tarifin varlığını ve kullanıcıya aitliğini denetle
       const [existing]: any = await pool.query(
         'SELECT id FROM recipes WHERE id = ? AND user_id = ?',
-        [id, DEMO_USER_ID]
+        [id, userId]
       );
       if (existing.length === 0) {
         res.status(404).json({ error: 'Güncellenecek tarif bulunamadı.' });
@@ -217,7 +220,7 @@ export const recipeController = {
         `UPDATE recipes 
          SET title = ?, servings = ?, prep_time = ?, cook_time = ? 
          WHERE id = ? AND user_id = ?`,
-        [title, servings || null, prep_time || null, cook_time || null, id, DEMO_USER_ID]
+        [title, servings || null, prep_time || null, cook_time || null, id, userId]
       );
 
       // b. Eski malzemeleri sil ve yenileri ekle
@@ -264,10 +267,11 @@ export const recipeController = {
         return;
       }
 
+      const userId = (req as any).user.id;
       // Silme işlemi ON DELETE CASCADE sayesinde bağlı malzemeleri ve adımları otomatik siler!
       const [result]: any = await pool.query(
         'DELETE FROM recipes WHERE id = ? AND user_id = ?',
-        [id, DEMO_USER_ID]
+        [id, userId]
       );
 
       if (result.affectedRows === 0) {

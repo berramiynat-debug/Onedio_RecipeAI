@@ -6,8 +6,7 @@ import { scrapeUrl } from '../services/scraperService';
 import { extractRecipeFromText } from '../services/llmService';
 import { config } from '../config';
 
-// Sabit demo kullanıcı ID'si (Bölüm 5.2 - Tek kullanıcılı demo)
-const DEMO_USER_ID = 1;
+// Sabit demo kullanıcı ID'si silindi
 
 /**
  * Arka planda çalışacak olan tarif çekme ve çıkarma işçisi (Background Worker)
@@ -105,6 +104,7 @@ export const importController = {
    */
   async startImport(req: Request, res: Response): Promise<void> {
     try {
+      const userId = (req as any).user.id;
       const { url } = req.body;
 
       if (!url || typeof url !== 'string') {
@@ -129,7 +129,7 @@ export const importController = {
 
       // 2. Mükerrer Kontrolü (FR-4): Aynı link daha önce eklenmiş mi?
       const cleanUrl = canonicalizeUrl(resolvedUrl);
-      const existingRecipe = await jobRepo.getRecipeByUrl(DEMO_USER_ID, cleanUrl);
+      const existingRecipe = await jobRepo.getRecipeByUrl(userId, cleanUrl);
       if (existingRecipe) {
         res.status(200).json({
           status: 'completed',
@@ -143,7 +143,7 @@ export const importController = {
       const jobId = uuidv4();
 
       // 4. Veritabanına 'queued' durumunda kaydet (FR-23)
-      await jobRepo.createJob(jobId, DEMO_USER_ID, cleanUrl);
+      await jobRepo.createJob(jobId, userId, cleanUrl);
 
       // 5. Arka plan işçisini asenkron olarak tetikle (await etmiyoruz!)
       // Timeout wrap (SEC-9)

@@ -13,6 +13,7 @@ export const config = {
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'onedio_recipes',
   },
+  jwtSecret: process.env.JWT_SECRET || 'oneyiyo-secret-key-2026',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
   // İzin verilen sosyal medya alan adları
   domainAllowlist: process.env.ALLOWED_DOMAINS 
