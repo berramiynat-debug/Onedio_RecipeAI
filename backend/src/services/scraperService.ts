@@ -89,8 +89,8 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
     const { data: html } = await axios.get(url, {
       headers: { 
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Cookie': 'CONSENT=YES+cb.20230531-04-p0.tr+FX+909; SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAnRyIAEaBgiA_eWbBg',
-        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
+        'Cookie': 'CONSENT=YES+cb.20220301-11-p0.en+FX+111; SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_eWbBg',
+        'Accept-Language': 'en-US,en;q=0.9'
       },
       timeout: 8000,
       maxContentLength: config.maxContentLength
