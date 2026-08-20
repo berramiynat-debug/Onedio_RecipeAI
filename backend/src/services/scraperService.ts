@@ -67,8 +67,15 @@ function extractBlogBody(html: string): string {
  */
 async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
   try {
+    let fetchUrl = url.replace('/shorts/', '/watch?v=');
+    if (!fetchUrl.includes('?')) {
+      fetchUrl += '?hl=tr&gl=TR&ucbcb=1';
+    } else {
+      fetchUrl += '&hl=tr&gl=TR&ucbcb=1';
+    }
+
     // 1. oEmbed API'sini dene (başlık ve yazar için çok güvenli)
-    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`;
+    const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(fetchUrl)}&format=json`;
     let title = '';
     let author = 'Bilinmeyen Yazar';
     
@@ -85,8 +92,8 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
     }
 
     // 2. HTML'i çekip açıklama kısmını alalım
-    await validateUrlForSsrf(url);
-    const { data: html } = await axios.get(url, {
+    await validateUrlForSsrf(fetchUrl);
+    const { data: html } = await axios.get(fetchUrl, {
       headers: { 
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Cookie': 'CONSENT=YES+cb.20220301-11-p0.en+FX+111; SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_eWbBg',
