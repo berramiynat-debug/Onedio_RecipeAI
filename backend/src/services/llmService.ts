@@ -1,9 +1,7 @@
+import Groq from 'groq-sdk';
 import { GoogleGenAI } from '@google/genai';
 import { z } from 'zod';
 import { config } from '../config';
-
-// Gemini istemcisini ilklendir
-const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
 
 export interface ExtractedRecipe {
   is_recipe: boolean;
@@ -27,88 +25,15 @@ export interface ExtractedRecipe {
   };
 }
 
-// Gemini modelinin uymak zorunda olduğu JSON Şeması
-const recipeSchema = {
-  type: 'object',
-  properties: {
-    is_recipe: {
-      type: 'boolean',
-      description: 'Metin gerçek bir yemek/içecek tarifi içeriyorsa true, sadece restoran incelemesi, sohbet veya alakasız bir konu ise false olmalıdır.'
-    },
-    title: { 
-      type: 'string', 
-      description: 'Tarifin Türkçe adı.' 
-    },
-    servings: { 
-      type: 'integer', 
-      description: 'Porsiyon sayısı (kişi sayısı). Kaynakta belirtilmemişse null bırakılmalıdır.',
-      nullable: true 
-    },
-    prep_time: { 
-      type: 'integer', 
-      description: 'Dakika cinsinden hazırlık süresi. Kaynakta belirtilmemişse null bırakılmalıdır.',
-      nullable: true 
-    },
-    cook_time: { 
-      type: 'integer', 
-      description: 'Dakika cinsinden pişirme süresi. Kaynakta belirtilmemişse null bırakılmalıdır.',
-      nullable: true 
-    },
-    ingredients: {
-      type: 'array',
-      description: 'Tarif malzemeleri listesi.',
-      items: {
-        type: 'object',
-        properties: {
-          amount: { 
-            type: 'number', 
-            description: 'Miktar değeri (sayı olarak, örn: 1, 2.5, 0.5). Belirtilmemişse null bırakılmalıdır.',
-            nullable: true 
-          },
-          unit: { 
-            type: 'string', 
-            description: 'Miktar birimi. Örn: "su bardağı", "yemek kaşığı", "gram", "adet", "diş". Belirtilmemişse null veya boş string bırakılmalıdır.',
-            nullable: true 
-          },
-          name: { 
-            type: 'string', 
-            description: 'Malzemenin adı (örn: un, kuru soğan, zeytinyağı).' 
-          }
-        },
-        required: ['name']
-      }
-    },
-    steps: {
-      type: 'array',
-      description: 'Tarif adımlarının sırasıyla listesi.',
-      items: { type: 'string' }
-    },
-    confidence_map: {
-      type: 'object',
-      description: 'Her bir alan için yapay zekanın güven derecesini belirtir.',
-      properties: {
-        title: { type: 'string', enum: ['high', 'low', 'missing'] },
-        servings: { type: 'string', enum: ['high', 'low', 'missing'] },
-        prep_time: { type: 'string', enum: ['high', 'low', 'missing'] },
-        cook_time: { type: 'string', enum: ['high', 'low', 'missing'] },
-        ingredients: { type: 'string', enum: ['high', 'low', 'missing'] },
-        steps: { type: 'string', enum: ['high', 'low', 'missing'] }
-      },
-      required: ['title', 'servings', 'prep_time', 'cook_time', 'ingredients', 'steps']
-    }
-  },
-  required: ['is_recipe', 'title', 'ingredients', 'steps', 'confidence_map']
-};
-
 const recipeZodSchema = z.object({
   is_recipe: z.boolean(),
   title: z.string(),
-  servings: z.number().nullable(),
-  prep_time: z.number().nullable(),
-  cook_time: z.number().nullable(),
+  servings: z.number().nullable().optional().transform(val => val ?? null),
+  prep_time: z.number().nullable().optional().transform(val => val ?? null),
+  cook_time: z.number().nullable().optional().transform(val => val ?? null),
   ingredients: z.array(z.object({
-    amount: z.number().nullable(),
-    unit: z.string().nullable(),
+    amount: z.number().nullable().optional().transform(val => val ?? null),
+    unit: z.string().nullable().optional().transform(val => val ?? null),
     name: z.string()
   })),
   steps: z.array(z.string()),
@@ -123,11 +48,14 @@ const recipeZodSchema = z.object({
 });
 
 /**
- * Ham metinden yapay zeka kullanarak Türkçe tarif verilerini ayıklar (FR-7 - FR-14)
+ * Ham metinden yapay zeka (Groq / Gemini) kullanarak Türkçe tarif verilerini ayıklar
  */
 export async function extractRecipeFromText(text: string): Promise<ExtractedRecipe> {
-  if (!config.geminiApiKey) {
-    throw new Error('system_error: Gemini API Key is missing in the configuration.');
+  const groqApiKey = config.groqApiKey || process.env.GROQ_API_KEY;
+  const geminiApiKey = config.geminiApiKey || process.env.GEMINI_API_KEY;
+
+  if (!groqApiKey && !geminiApiKey) {
+    throw new Error('system_error: Neither GROQ_API_KEY nor GEMINI_API_KEY is configured.');
   }
 
   const systemInstruction = `
@@ -135,33 +63,71 @@ Aşağıda verilen ham metni analiz et ve içerisinden yemek tarifini çıkar.
 
 KURALLAR:
 1. Çıktı dili tamamen Türkçe olmalıdır. Kaynak metin yabancı dilde olsa bile malzemeleri ve adımları Türkçe'ye çevir. (FR-12)
-2. Malzeme miktarlarında ve birimlerinde "imperial" ölçüleri (örneğin: cups, oz, lbs, Fahrenheit) Türkçe mutfak ölçülerine (su bardağı, yemek kaşığı, gram, ml, Derece) çevir. Eğer dönüşüm belirsizse orijinal birimi koru ve o malzemenin confidence_map değerini 'low' yap. (FR-13)
-3. Türkçe karşılığı olmayan malzemeleri uydurma çeviri yapmak yerine orijinal adı ve parantez içinde kısa bir açıklamasıyla bırak (Örn: "Maple Syrup (Akçaağaç Şurubu)"). (FR-14)
-4. Kaynak metinde belirtilmeyen hiçbir miktar, süre veya porsiyon bilgisini uydurma (Halüsinasyon yasak!). Kaynakta yoksa null bırak ve confidence_map değerini 'missing' yap. (FR-9)
-5. Metin bir yemek tarifi içermiyorsa (örneğin sadece restoran yorumu, gezi vlogu veya alakasız bir yazıysa), is_recipe alanını kesinlikle false olarak işaretle. (FR-10)
+2. Malzeme miktarlarında ve birimlerinde imperial ölçüleri Türkçe mutfak ölçülerine çevir. (FR-13)
+3. Metin bir yemek tarifi içermiyorsa (örneğin sadece restoran yorumu, gezi vlogu veya alakasız bir yazıysa), is_recipe alanını kesinlikle false olarak işaretle. (FR-10)
+4. Çıktı kesinlikle ve YALNIZCA aşağıdaki JSON yapısına uyan geçerli bir JSON objesi olmalıdır:
+
+{
+  "is_recipe": true,
+  "title": "Tarifin Adı",
+  "servings": 4,
+  "prep_time": 15,
+  "cook_time": 20,
+  "ingredients": [
+    { "amount": 1, "unit": "adet", "name": "soğan" }
+  ],
+  "steps": ["1. Adım", "2. Adım"],
+  "confidence_map": {
+    "title": "high",
+    "servings": "high",
+    "prep_time": "missing",
+    "cook_time": "missing",
+    "ingredients": "high",
+    "steps": "high"
+  }
+}
 `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
-      contents: text,
-      config: {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        responseSchema: recipeSchema as any,
-        temperature: 0.1 // Daha kararlı ve tutarlı çıktılar için düşük sıcaklık
-      }
-    });
+    let responseText = '';
 
-    const responseText = response.text;
+    if (groqApiKey) {
+      // Groq Cloud Llama-3.3-70b-versatile kullanımı
+      const groq = new Groq({ apiKey: groqApiKey });
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [
+          { role: 'system', content: systemInstruction },
+          { role: 'user', content: text }
+        ],
+        model: 'llama-3.3-70b-versatile',
+        temperature: 0.1,
+        response_format: { type: 'json_object' }
+      });
+      responseText = chatCompletion.choices[0]?.message?.content || '';
+    } else if (geminiApiKey) {
+      // Gemini API Fallback
+      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.5-flash',
+        contents: text,
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+          temperature: 0.1
+        }
+      });
+      responseText = response.text || '';
+    }
+
     if (!responseText) {
       throw new Error('LLM returned an empty response.');
     }
 
-    const parsedJson = JSON.parse(responseText);
+    const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsedJson = JSON.parse(cleanJson);
     const recipe = recipeZodSchema.parse(parsedJson) as ExtractedRecipe;
     
-    // Zod doğrulamasından sonra kaynak metinle eşleştirerek halüsinasyon kontrolü yap (FR-9)
+    // Halüsinasyon kontrolü
     const validatedRecipe = validateHallucinations(recipe, text);
     
     return validatedRecipe;
@@ -171,16 +137,13 @@ KURALLAR:
 }
 
 /**
- * Kaynak metinde geçmeyen sayısal miktarları ve süreleri tespit eder,
- * confidence_map alanlarını 'low' olarak işaretleyerek doğrulama katmanı (validation layer) görevi görür (FR-9).
+ * Kaynak metinde geçmeyen sayısal miktarları ve süreleri tespit eder
  */
 function validateHallucinations(recipe: ExtractedRecipe, sourceText: string): ExtractedRecipe {
-  // Metindeki tüm sayıları çıkar (örn: 1, 2.5, 0,5 vb.)
   const numberRegex = /\b\d+(?:[.,]\d+)?\b/g;
   const sourceNumbers = new Set<string>();
   let match;
   while ((match = numberRegex.exec(sourceText)) !== null) {
-    // Virgüllü sayıları nokta biçimine çevirip kaydet
     const cleanedNum = parseFloat(match[0].replace(',', '.')).toString();
     sourceNumbers.add(cleanedNum);
   }
@@ -189,17 +152,15 @@ function validateHallucinations(recipe: ExtractedRecipe, sourceText: string): Ex
     if (val !== null && val !== undefined) {
       const parsedVal = val.toString();
       if (!sourceNumbers.has(parsedVal)) {
-        recipe.confidence_map[field] = 'low'; // Metinde geçmeyen sayıya low confidence ata
+        recipe.confidence_map[field] = 'low';
       }
     }
   };
 
-  // 1. Porsiyon ve süre sayılarını doğrula
   checkNumber(recipe.servings, 'servings');
   checkNumber(recipe.prep_time, 'prep_time');
   checkNumber(recipe.cook_time, 'cook_time');
 
-  // 2. Malzeme miktarlarını doğrula
   if (recipe.ingredients && Array.isArray(recipe.ingredients)) {
     let hasHallucinatedAmount = false;
     for (const ing of recipe.ingredients) {

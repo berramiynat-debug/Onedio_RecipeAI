@@ -24,8 +24,8 @@ async function runImportJob(jobId: string, initialUrl: string) {
 
     let recipeData: any;
 
-    if (config.geminiApiKey) {
-      // 6. LLM ile tarif çıkarma
+    if (config.groqApiKey || config.geminiApiKey) {
+      // 6. LLM ile tarif çıkarma (Groq veya Gemini)
       const recipe = await extractRecipeFromText(scrapedData.content);
 
       // Eğer tarif değilse reddet (FR-10)

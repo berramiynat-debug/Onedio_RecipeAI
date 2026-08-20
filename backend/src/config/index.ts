@@ -15,6 +15,7 @@ export const config = {
   },
   jwtSecret: process.env.JWT_SECRET || 'oneyiyo-secret-key-2026',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
+  groqApiKey: process.env.GROQ_API_KEY || '',
   // İzin verilen sosyal medya alan adları
   domainAllowlist: process.env.ALLOWED_DOMAINS 
     ? process.env.ALLOWED_DOMAINS.split(',').map(d => d.trim())
