@@ -48,7 +48,7 @@ export async function initDb() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS import_jobs (
       id VARCHAR(36) PRIMARY KEY,
-      user_id INT NOT NULL,
+      user_id INT NULL,
       canonical_url VARCHAR(2083) NOT NULL,
       status ENUM('queued', 'processing', 'ready_for_review', 'completed', 'failed') NOT NULL DEFAULT 'queued',
       sub_status ENUM('fetching', 'extracting', 'translating') NULL,
@@ -60,6 +60,12 @@ export async function initDb() {
       FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
+
+  try {
+    await pool.query('ALTER TABLE import_jobs MODIFY COLUMN user_id INT NULL');
+  } catch (e) {
+    // Already modified or safe to ignore
+  }
 
   // 3. Recipes (Yemek Tarifleri) Tablosu
   await pool.query(`

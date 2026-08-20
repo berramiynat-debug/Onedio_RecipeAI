@@ -2,7 +2,7 @@ import pool from './db';
 
 export interface DbJob {
   id: string;
-  user_id: number;
+  user_id: number | null;
   canonical_url: string;
   status: 'queued' | 'processing' | 'ready_for_review' | 'completed' | 'failed';
   sub_status: 'fetching' | 'extracting' | 'translating' | null;
@@ -17,7 +17,7 @@ export const jobRepo = {
   /**
    * Yeni bir asenkron iş (job) oluşturur
    */
-  async createJob(id: string, userId: number, canonicalUrl: string): Promise<void> {
+  async createJob(id: string, userId: number | null, canonicalUrl: string): Promise<void> {
     await pool.query(
       `INSERT INTO import_jobs (id, user_id, canonical_url, status) 
        VALUES (?, ?, ?, 'queued')`,

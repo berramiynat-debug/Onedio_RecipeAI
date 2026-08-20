@@ -106,7 +106,7 @@ export const importController = {
    */
   async startImport(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req as any).user.id;
+      const userId = (req as any).user ? (req as any).user.id : null;
       const { url } = req.body;
 
       if (!url || typeof url !== 'string') {
@@ -129,16 +129,18 @@ export const importController = {
       // 1.5 Kısa linkleri çöz (TikTok vb.) ve SSRF doğrulaması yap (SEC-3)
       const resolvedUrl = await resolveRedirectsSafely(url);
 
-      // 2. Mükerrer Kontrolü (FR-4): Aynı link daha önce eklenmiş mi?
+      // 2. Mükerrer Kontrolü (FR-4): Giriş yapılmışsa aynı link daha önce eklenmiş mi?
       const cleanUrl = canonicalizeUrl(resolvedUrl);
-      const existingRecipe = await jobRepo.getRecipeByUrl(userId, cleanUrl);
-      if (existingRecipe) {
-        res.status(200).json({
-          status: 'completed',
-          recipeId: existingRecipe.id,
-          message: 'Bu tarifi daha önce eklemiştiniz.'
-        });
-        return;
+      if (userId) {
+        const existingRecipe = await jobRepo.getRecipeByUrl(userId, cleanUrl);
+        if (existingRecipe) {
+          res.status(200).json({
+            status: 'completed',
+            recipeId: existingRecipe.id,
+            message: 'Bu tarifi daha önce eklemiştiniz.'
+          });
+          return;
+        }
       }
 
       // 3. Benzersiz Job ID oluştur

@@ -13,6 +13,11 @@ export const authController = {
         return res.status(400).json({ error: 'Kullanıcı adı en az 3 karakter olmalıdır.' });
       }
       
+      const usernameRegex = /^[a-zA-Z0-9çğışöüÇĞİŞÖÜ\s_-]{3,50}$/u;
+      if (!usernameRegex.test(username.trim())) {
+        return res.status(400).json({ error: 'Kullanıcı adı yalnızca harf, rakam, boşluk ve alt çizgi içerebilir.' });
+      }
+      
       if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
         return res.status(400).json({ error: 'Geçerli bir e-posta adresi giriniz.' });
       }

@@ -4,7 +4,7 @@ import { importController } from '../controllers/importController';
 import { jobController } from '../controllers/jobController';
 import { recipeController } from '../controllers/recipeController';
 import { authController } from '../controllers/authController';
-import { authenticateToken } from '../middlewares/authMiddleware';
+import { authenticateToken, optionalAuthenticateToken } from '../middlewares/authMiddleware';
 import { config } from '../config';
 
 const router = Router();
@@ -19,9 +19,9 @@ const importLimiter = rateLimit({
 router.post('/auth/register', authController.register);
 router.post('/auth/login', authController.login);
 
-// 1. İçe Aktarma ve Durum Sorgulama Rotaları
-router.post('/import', authenticateToken, importLimiter, importController.startImport);
-router.get('/jobs/:id', authenticateToken, jobController.getJobStatus);
+// 1. İçe Aktarma ve Durum Sorgulama Rotaları (Herkes Link Gönderebilir ve Görebilir)
+router.post('/import', optionalAuthenticateToken, importLimiter, importController.startImport);
+router.get('/jobs/:id', optionalAuthenticateToken, jobController.getJobStatus);
 
 // 2. Yemek Tarifi Yönetimi Rotaları (Koleksiyon)
 router.post('/recipes', authenticateToken, recipeController.saveRecipe);

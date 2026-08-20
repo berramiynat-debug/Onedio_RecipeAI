@@ -64,12 +64,6 @@ function AppContent() {
 
   if (loadingAuth) return <div style={{padding: '2rem', textAlign: 'center'}}>Yükleniyor...</div>;
 
-  const isAuthRoute = location.pathname === '/login' || location.pathname === '/register';
-
-  if (!user && !isAuthRoute) {
-    return <Navigate to="/login" replace />;
-  }
-
   return (
     <div className="app-layout">
       {/* Header */}
@@ -79,46 +73,54 @@ function AppContent() {
           <span className="app-header__title">Oneyi<span>yo</span></span>
         </NavLink>
         
-        {user && (
-          <nav className="app-header__nav" style={{ alignItems: 'center' }}>
-            <NavLink
-              to="/"
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-              onClick={(e) => handleNavClick(e, '/')}
-            >
-              🍳 Tarif Ekle
-            </NavLink>
-            <NavLink
-              to="/collection"
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-              onClick={(e) => handleNavClick(e, '/collection')}
-            >
-              📚 Koleksiyonum
-            </NavLink>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '1rem', paddingLeft: '1rem', borderLeft: '1px solid var(--color-border-light)' }}>
-              <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
-                👤 {user.username || user.email}
-              </span>
-              <button onClick={handleLogout} className="btn btn-secondary btn-sm" style={{ padding: '0.25rem 0.75rem' }}>
-                Çıkış Yap
-              </button>
-            </div>
-          </nav>
-        )}
+        <nav className="app-header__nav" style={{ alignItems: 'center' }}>
+          <NavLink
+            to="/"
+            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            onClick={(e) => handleNavClick(e, '/')}
+          >
+            🍳 Tarif Çıkar
+          </NavLink>
+          
+          <NavLink
+            to="/collection"
+            className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+            onClick={(e) => handleNavClick(e, '/collection')}
+          >
+            📚 Koleksiyonum
+          </NavLink>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '1rem', paddingLeft: '1rem', borderLeft: '1px solid var(--color-border-light)' }}>
+            {user ? (
+              <>
+                <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+                  👤 {user.username || user.email}
+                </span>
+                <button onClick={handleLogout} className="btn btn-secondary btn-sm" style={{ padding: '0.25rem 0.75rem' }}>
+                  Çıkış Yap
+                </button>
+              </>
+            ) : (
+              <>
+                <NavLink to="/login" className="btn btn-secondary btn-sm" style={{ padding: '0.25rem 0.75rem' }}>
+                  Giriş Yap
+                </NavLink>
+                <NavLink to="/register" className="btn btn-primary btn-sm" style={{ padding: '0.25rem 0.75rem' }}>
+                  Kayıt Ol
+                </NavLink>
+              </>
+            )}
+          </div>
+        </nav>
       </header>
 
       {/* Main Content */}
       <main className="app-main">
-        {!user && isAuthRoute ? (
-          <Routes>
-            <Route path="/login" element={<Login setAuth={setUser} />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
-        ) : reviewData ? (
+        {reviewData ? (
           <ReviewEdit
             jobData={reviewData}
             jobId={reviewJobId}
+            user={user}
             onSaved={handleRecipeSaved}
             onCancel={() => {
               setReviewData(null);
@@ -128,8 +130,10 @@ function AppContent() {
         ) : (
           <Routes>
             <Route path="/" element={<Dashboard onRecipeReady={handleRecipeReady} />} />
-            <Route path="/collection" element={<Collection />} />
-            <Route path="/recipes/:id" element={<RecipeDetail />} />
+            <Route path="/login" element={<Login setAuth={setUser} />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/collection" element={user ? <Collection /> : <Navigate to="/login" replace />} />
+            <Route path="/recipes/:id" element={user ? <RecipeDetail /> : <Navigate to="/login" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         )}

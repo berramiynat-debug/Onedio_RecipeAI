@@ -1,10 +1,13 @@
 import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../utils/api';
 
 /**
  * Zorunlu düzenlenebilir önizleme ekranı (FR-15 — FR-18)
  */
-export default function ReviewEdit({ jobData, jobId, onSaved, onCancel }) {
+export default function ReviewEdit({ jobData, jobId, user, onSaved, onCancel }) {
+  const navigate = useNavigate();
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const recipe = typeof jobData.recipe_data === 'string' 
     ? JSON.parse(jobData.recipe_data) 
     : jobData.recipe_data;
@@ -94,6 +97,11 @@ export default function ReviewEdit({ jobData, jobId, onSaved, onCancel }) {
 
   // --- Kaydetme ---
   const handleSave = async () => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
+
     if (!title.trim()) {
       setError('Tarif başlığı boş bırakılamaz.');
       return;
@@ -153,6 +161,53 @@ export default function ReviewEdit({ jobData, jobId, onSaved, onCancel }) {
 
   return (
     <div className="fade-in" style={{ maxWidth: 720, margin: '0 auto' }}>
+      {/* Ziyaretçi Giriş/Kayıt Modal Popup */}
+      {showAuthModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div className="card fade-in" style={{ maxWidth: '440px', width: '90%', padding: '2rem', textAlign: 'center', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>👨‍🍳</div>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--color-navy)', marginBottom: '0.75rem' }}>
+              Koleksiyonuna Kaydet
+            </h2>
+            <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.95rem', marginBottom: '1.5rem', lineHeight: 1.5 }}>
+              Yapay zekanın çıkardığı tarifleri kendi özel tarif koleksiyonunda saklamak ve istediğin zaman erişmek için ücretsiz hesap oluştur veya giriş yap.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <button 
+                className="btn btn-primary btn-lg"
+                onClick={() => { window.onbeforeunload = null; navigate('/login'); }}
+              >
+                Giriş Yap
+              </button>
+              <button 
+                className="btn btn-secondary btn-lg"
+                onClick={() => { window.onbeforeunload = null; navigate('/register'); }}
+              >
+                Ücretsiz Kayıt Ol
+              </button>
+              <button 
+                onClick={() => setShowAuthModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--color-text-secondary)', fontSize: '0.875rem', cursor: 'pointer', marginTop: '0.5rem' }}
+              >
+                Vazgeç (Tarifi İncelemeye Devam Et)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-6)' }}>
         <div>
           <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700, color: 'var(--color-navy)' }}>
