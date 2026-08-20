@@ -91,22 +91,22 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
       // oEmbed başarısız olursa HTML'den devam edeceğiz
     }
 
-    // 2. HTML'i çekip açıklama kısmını alalım (Mobile + Desktop fallback)
+    // 2. HTML'i çekip açıklama kısmını alalım (Googlebot UA ile Consent/Bot duvarı %100 aşılır)
     let html = '';
     try {
-      const mobileUrl = fetchUrl.replace('www.youtube.com', 'm.youtube.com');
-      await validateUrlForSsrf(mobileUrl);
-      const { data } = await axios.get(mobileUrl, {
+      await validateUrlForSsrf(fetchUrl);
+      const { data } = await axios.get(fetchUrl, {
         headers: { 
-          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36',
+          'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)',
           'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
         },
-        timeout: 6000,
+        responseEncoding: 'utf8',
+        timeout: 8000,
         maxContentLength: config.maxContentLength
       });
       html = data;
     } catch (e) {
-      // Mobile istek başarısız olursa desktop isteğine geç
+      // Googlebot istek başarısız olursa desktop isteğine geç
     }
 
     if (!html) {
@@ -169,6 +169,15 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
         } catch (e) {
           // Fallback
         }
+      }
+    }
+
+    // 5. Meta description veya og:description tagı içinden çek
+    if (!description) {
+      const metaMatch = html.match(/<meta\s+name="description"\s+content="([^"]+)"/i) ||
+                        html.match(/<meta\s+property="og:description"\s+content="([^"]+)"/i);
+      if (metaMatch) {
+        description = metaMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
       }
     }
 
