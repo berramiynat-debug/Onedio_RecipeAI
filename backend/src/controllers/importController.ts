@@ -18,6 +18,8 @@ async function runImportJob(jobId: string, initialUrl: string) {
 
     // 2. İçerik toplama (Scraping) - Canonical URL artık argüman olarak geliyor
     const scrapedData = await scrapeUrl(initialUrl);
+    console.log(`[ImportJob ${jobId}] Scraped Title: "${scrapedData.title}", Content length: ${scrapedData.content.length}`);
+    console.log(`[ImportJob ${jobId}] Content snippet:`, scrapedData.content.substring(0, 250));
 
     // 5. Durumu güncelle (sub_status: extracting)
     await jobRepo.updateJobStatus(jobId, 'processing', 'extracting');
@@ -30,7 +32,7 @@ async function runImportJob(jobId: string, initialUrl: string) {
 
       // Eğer tarif değilse reddet (FR-10)
       if (!recipe.is_recipe) {
-        throw new Error('no_recipe: Metinde yemek tarifi bulunamadı.');
+        throw new Error(`no_recipe: Metinde yemek tarifi bulunamadı. (Çekilen Metin: ${scrapedData.content.substring(0, 150)}...)`);
       }
 
       // Orijinal kaynak atıflarını güvenilir metadata'dan ezerek eşle (SEC-6, FR-16)
