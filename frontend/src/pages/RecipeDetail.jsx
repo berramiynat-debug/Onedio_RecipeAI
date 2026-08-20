@@ -142,7 +142,7 @@ export default function RecipeDetail() {
             <input className="input" value={title} onChange={e => setTitle(e.target.value)} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+          <div className="recipe-meta-grid" style={{ marginTop: 'var(--space-4)' }}>
             <div className="input-group">
               <label className="input-label">Porsiyon</label>
               <input className="input" type="number" value={servings} onChange={e => setServings(e.target.value)} placeholder="—" />
@@ -165,10 +165,9 @@ export default function RecipeDetail() {
             <button className="btn btn-sm btn-secondary" onClick={() => setIngredients([...ingredients, { amount: '', unit: '', name: '' }])}>+ Ekle</button>
           </div>
           {ingredients.map((ing, idx) => (
-            <div key={idx} style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-2)', alignItems: 'center' }}>
+            <div key={idx} className="ingredient-row">
               <input
-                className="input"
-                style={{ width: 80 }}
+                className="input ingredient-row__amount"
                 placeholder="Miktar"
                 value={ing.amount || ''}
                 onChange={e => {
@@ -178,8 +177,7 @@ export default function RecipeDetail() {
                 }}
               />
               <input
-                className="input"
-                style={{ width: 110 }}
+                className="input ingredient-row__unit"
                 placeholder="Birim"
                 value={ing.unit || ''}
                 onChange={e => {
@@ -189,8 +187,7 @@ export default function RecipeDetail() {
                 }}
               />
               <input
-                className="input"
-                style={{ flex: 1 }}
+                className="input ingredient-row__name"
                 placeholder="Malzeme adı"
                 value={ing.name || ''}
                 onChange={e => {
@@ -199,7 +196,7 @@ export default function RecipeDetail() {
                   setIngredients(copy);
                 }}
               />
-              <button className="btn btn-sm btn-danger" onClick={() => setIngredients(ingredients.filter((_, i) => i !== idx))}>✕</button>
+              <button className="btn btn-sm btn-danger ingredient-row__delete" onClick={() => setIngredients(ingredients.filter((_, i) => i !== idx))}>✕</button>
             </div>
           ))}
         </div>

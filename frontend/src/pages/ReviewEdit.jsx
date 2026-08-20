@@ -243,7 +243,7 @@ export default function ReviewEdit({ jobData, jobId, user, onSaved, onCancel }) 
           <input className="input" value={title} onChange={e => { setTitle(e.target.value); markEdited('title'); }} id="review-title" />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-4)', marginTop: 'var(--space-4)' }}>
+        <div className="recipe-meta-grid" style={{ marginTop: 'var(--space-4)' }}>
           <div className="input-group">
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
               <label className="input-label">Porsiyon</label>
@@ -279,29 +279,26 @@ export default function ReviewEdit({ jobData, jobId, user, onSaved, onCancel }) 
         </div>
 
         {ingredients.map((ing, index) => (
-          <div key={ing.id ?? index} style={{ display: 'flex', gap: 'var(--space-2)', marginBottom: 'var(--space-2)', alignItems: 'center' }}>
+          <div key={ing.id ?? index} className="ingredient-row">
             <input
-              className="input"
-              style={{ width: 80 }}
+              className="input ingredient-row__amount"
               placeholder="Miktar"
               value={ing.amount || ''}
               onChange={e => updateIngredient(index, 'amount', e.target.value)}
             />
             <input
-              className="input"
-              style={{ width: 110 }}
+              className="input ingredient-row__unit"
               placeholder="Birim"
               value={ing.unit || ''}
               onChange={e => updateIngredient(index, 'unit', e.target.value)}
             />
             <input
-              className="input"
-              style={{ flex: 1 }}
+              className="input ingredient-row__name"
               placeholder="Malzeme adı"
               value={ing.name || ''}
               onChange={e => updateIngredient(index, 'name', e.target.value)}
             />
-            <button className="btn btn-sm btn-danger" onClick={() => removeIngredient(index)} title="Sil">✕</button>
+            <button className="btn btn-sm btn-danger ingredient-row__delete" onClick={() => removeIngredient(index)} title="Sil">✕</button>
           </div>
         ))}
       </div>

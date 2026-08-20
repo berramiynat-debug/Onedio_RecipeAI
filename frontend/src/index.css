@@ -622,6 +622,38 @@ textarea.input {
 }
 
 /* ============================================
+   RECIPE DETAILS & INGREDIENTS LAYOUTS
+   ============================================ */
+.recipe-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--space-4);
+}
+
+.ingredient-row {
+  display: flex;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  align-items: center;
+}
+
+.ingredient-row__amount {
+  width: 80px;
+}
+
+.ingredient-row__unit {
+  width: 110px;
+}
+
+.ingredient-row__name {
+  flex: 1;
+}
+
+.ingredient-row__delete {
+  flex-shrink: 0;
+}
+
+/* ============================================
    RESPONSIVE
    ============================================ */
 @media (max-width: 768px) {
@@ -649,3 +681,65 @@ textarea.input {
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 640px) {
+  .app-header {
+    flex-direction: column;
+    gap: var(--space-3);
+    align-items: stretch;
+    text-align: center;
+  }
+  
+  .app-header__logo {
+    justify-content: center;
+  }
+  
+  .app-header__nav {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+  
+  .recipe-meta-grid {
+    grid-template-columns: 1fr !important;
+    gap: var(--space-3);
+  }
+}
+
+@media (max-width: 576px) {
+  .ingredient-row {
+    flex-wrap: wrap;
+    border-bottom: 1px dashed var(--color-border);
+    padding-bottom: var(--space-3);
+    margin-bottom: var(--space-3);
+    align-items: stretch;
+  }
+  
+  .ingredient-row__amount {
+    width: 25% !important;
+    order: 1;
+  }
+  
+  .ingredient-row__unit {
+    width: calc(75% - 46px) !important;
+    flex-grow: 1;
+    order: 2;
+  }
+  
+  .ingredient-row__delete {
+    width: 38px;
+    height: 38px;
+    padding: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    order: 3;
+  }
+  
+  .ingredient-row__name {
+    width: 100% !important;
+    flex: none !important;
+    order: 4;
+  }
+}
+
