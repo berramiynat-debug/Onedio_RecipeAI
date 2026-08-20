@@ -33,16 +33,16 @@ const confidenceValue = z.union([z.enum(['high', 'medium', 'low', 'missing']), z
 
 const recipeZodSchema = z.object({
   is_recipe: z.boolean(),
-  title: z.string(),
+  title: z.union([z.string(), z.null(), z.undefined()]).transform(val => (val && val.trim() ? val : 'Nefis Yemek Tarifi')),
   servings: z.number().nullable().optional().transform(val => val ?? null),
   prep_time: z.number().nullable().optional().transform(val => val ?? null),
   cook_time: z.number().nullable().optional().transform(val => val ?? null),
   ingredients: z.array(z.object({
     amount: z.number().nullable().optional().transform(val => val ?? null),
     unit: z.string().nullable().optional().transform(val => val ?? null),
-    name: z.string()
-  })),
-  steps: z.array(z.string()),
+    name: z.union([z.string(), z.null(), z.undefined()]).transform(val => (val && val.trim() ? val : 'Malzeme'))
+  })).optional().transform(val => val || []),
+  steps: z.array(z.string()).optional().transform(val => val || []),
   confidence_map: z.object({
     title: confidenceValue,
     servings: confidenceValue,
@@ -50,6 +50,13 @@ const recipeZodSchema = z.object({
     cook_time: confidenceValue,
     ingredients: confidenceValue,
     steps: confidenceValue,
+  }).optional().transform(val => val || {
+    title: 'low' as const,
+    servings: 'missing' as const,
+    prep_time: 'missing' as const,
+    cook_time: 'missing' as const,
+    ingredients: 'low' as const,
+    steps: 'low' as const
   })
 });
 
