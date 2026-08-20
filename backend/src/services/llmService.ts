@@ -92,14 +92,14 @@ KURALLAR:
     let responseText = '';
 
     if (groqApiKey) {
-      // Groq Cloud Llama-3.3-70b-versatile kullanımı
+      // Groq Cloud openai/gpt-oss-120b kullanımı
       const groq = new Groq({ apiKey: groqApiKey });
       const chatCompletion = await groq.chat.completions.create({
         messages: [
           { role: 'system', content: systemInstruction },
           { role: 'user', content: text }
         ],
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-120b',
         temperature: 0.1,
         response_format: { type: 'json_object' }
       });
