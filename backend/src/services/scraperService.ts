@@ -91,18 +91,38 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
       // oEmbed başarısız olursa HTML'den devam edeceğiz
     }
 
-    // 2. HTML'i çekip açıklama kısmını alalım
-    await validateUrlForSsrf(fetchUrl);
-    const { data: html } = await axios.get(fetchUrl, {
-      headers: { 
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Cookie': 'CONSENT=YES+cb.20220301-11-p0.en+FX+111; SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_eWbBg',
-        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
-      },
-      responseEncoding: 'utf8',
-      timeout: 8000,
-      maxContentLength: config.maxContentLength
-    });
+    // 2. HTML'i çekip açıklama kısmını alalım (Mobile + Desktop fallback)
+    let html = '';
+    try {
+      const mobileUrl = fetchUrl.replace('www.youtube.com', 'm.youtube.com');
+      await validateUrlForSsrf(mobileUrl);
+      const { data } = await axios.get(mobileUrl, {
+        headers: { 
+          'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36',
+          'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
+        },
+        timeout: 6000,
+        maxContentLength: config.maxContentLength
+      });
+      html = data;
+    } catch (e) {
+      // Mobile istek başarısız olursa desktop isteğine geç
+    }
+
+    if (!html) {
+      await validateUrlForSsrf(fetchUrl);
+      const { data } = await axios.get(fetchUrl, {
+        headers: { 
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Cookie': 'CONSENT=YES+cb.20220301-11-p0.en+FX+111; SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_eWbBg',
+          'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
+        },
+        responseEncoding: 'utf8',
+        timeout: 8000,
+        maxContentLength: config.maxContentLength
+      });
+      html = data;
+    }
 
     if (!title) {
       const titleMatch = html.match(/<title>([\s\S]*?)<\/title>/i);
@@ -131,7 +151,15 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
       }
     }
 
-    // 3. ytInitialData structuredDescriptionBodyText içinden çek
+    // 3. "description":{"simpleText":"..."} regex'i ile çek
+    if (!description) {
+      const simpleDescMatch = html.match(/"description":\s*\{\s*"simpleText":\s*"([^"]+)"/);
+      if (simpleDescMatch) {
+        description = simpleDescMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+      }
+    }
+
+    // 4. ytInitialData structuredDescriptionBodyText içinden çek
     if (!description) {
       const attrBodyMatch = html.match(/"attributedDescriptionBodyText":\s*({[\s\S]*?})\s*,\s*"/);
       if (attrBodyMatch) {
