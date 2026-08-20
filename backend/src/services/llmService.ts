@@ -25,6 +25,12 @@ export interface ExtractedRecipe {
   };
 }
 
+const confidenceValue = z.union([z.enum(['high', 'medium', 'low', 'missing']), z.string()]).transform((v) => {
+  if (v === 'high') return 'high' as const;
+  if (v === 'missing') return 'missing' as const;
+  return 'low' as const;
+});
+
 const recipeZodSchema = z.object({
   is_recipe: z.boolean(),
   title: z.string(),
@@ -38,12 +44,12 @@ const recipeZodSchema = z.object({
   })),
   steps: z.array(z.string()),
   confidence_map: z.object({
-    title: z.enum(['high', 'low', 'missing']),
-    servings: z.enum(['high', 'low', 'missing']),
-    prep_time: z.enum(['high', 'low', 'missing']),
-    cook_time: z.enum(['high', 'low', 'missing']),
-    ingredients: z.enum(['high', 'low', 'missing']),
-    steps: z.enum(['high', 'low', 'missing']),
+    title: confidenceValue,
+    servings: confidenceValue,
+    prep_time: confidenceValue,
+    cook_time: confidenceValue,
+    ingredients: confidenceValue,
+    steps: confidenceValue,
   })
 });
 
