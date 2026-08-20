@@ -90,7 +90,7 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
       headers: { 
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Cookie': 'CONSENT=YES+cb.20220301-11-p0.en+FX+111; SOCS=CAESEwgDEgk0ODE3Nzk3MjQaAmVuIAEaBgiA_eWbBg',
-        'Accept-Language': 'en-US,en;q=0.9'
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
       },
       responseEncoding: 'utf8',
       timeout: 8000,
@@ -102,9 +102,11 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
       title = titleMatch ? titleMatch[1].replace(' - YouTube', '').trim() : 'YouTube Videosu';
     }
 
-    // YouTube video açıklamasını ytInitialPlayerResponse içinden eksiksiz çekmeye çalış
+    // YouTube video açıklamasını çok katmanlı fallback ile çekmeye çalış
     let description = '';
-    const playerResponseMatch = html.match(/ytInitialPlayerResponse\s*=\s*({[\s\S]*?});/);
+    
+    // 1. ytInitialPlayerResponse içinden eksiksiz çek
+    const playerResponseMatch = html.match(/ytInitialPlayerResponse\s*=\s*({[\s\S]*?})(?:;|\s*<\/script>)/);
     if (playerResponseMatch) {
       try {
         const json = JSON.parse(playerResponseMatch[1]);
@@ -114,6 +116,28 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
       }
     }
 
+    // 2. Doğrudan "shortDescription" JSON anahtarı regex'i ile çek
+    if (!description) {
+      const shortDescMatch = html.match(/"shortDescription":\s*"([^"]+)"/);
+      if (shortDescMatch) {
+        description = shortDescMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"');
+      }
+    }
+
+    // 3. ytInitialData structuredDescriptionBodyText içinden çek
+    if (!description) {
+      const attrBodyMatch = html.match(/"attributedDescriptionBodyText":\s*({[\s\S]*?})\s*,\s*"/);
+      if (attrBodyMatch) {
+        try {
+          const bodyJson = JSON.parse(attrBodyMatch[1]);
+          description = bodyJson.content || '';
+        } catch (e) {
+          // Fallback
+        }
+      }
+    }
+
+    // 4. Meta tag'lerden çek
     if (!description) {
       description = extractMetaTag(html, 'description') || extractMetaTag(html, 'og:description');
     }

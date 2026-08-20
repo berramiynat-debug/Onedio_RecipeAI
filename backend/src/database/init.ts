@@ -2,6 +2,8 @@ import mysql from 'mysql2/promise';
 import { config } from '../config';
 
 export async function initDb() {
+  const isSslNeeded = process.env.DB_SSL === 'true' || config.db.host.includes('aivencloud.com') || config.db.port === 24523 || process.env.NODE_ENV === 'production';
+
   // İlk önce veritabanı olmadan bağlanıp veritabanını oluşturalım
   const connection = await mysql.createConnection({
     host: config.db.host,
@@ -9,6 +11,7 @@ export async function initDb() {
     user: config.db.user,
     password: config.db.password,
     charset: 'utf8mb4',
+    ssl: isSslNeeded ? { rejectUnauthorized: false } : undefined,
   });
 
   console.log(`Checking/Creating database: ${config.db.database}...`);
