@@ -78,7 +78,8 @@ KURALLAR:
 1. Çıktı dili tamamen Türkçe olmalıdır. Kaynak metin yabancı dilde olsa bile malzemeleri ve adımları Türkçe'ye çevir. (FR-12)
 2. Malzeme miktarlarında ve birimlerinde imperial ölçüleri Türkçe mutfak ölçülerine çevir. (FR-13)
 3. Metin bir yemek tarifi içermiyorsa (örneğin sadece restoran yorumu, gezi vlogu veya alakasız bir yazıysa), is_recipe alanını kesinlikle false olarak işaretle. (FR-10)
-4. Çıktı kesinlikle ve YALNIZCA aşağıdaki JSON yapısına uyan geçerli bir JSON objesi olmalıdır:
+4. Eğer metin içerisinde "=== VİDEO KONUŞMA METNİ (TRANSKRİPT) ===" başlığı altında video transkripti yer alıyorsa, tarif malzemelerini ve adımları bu konuşma akışından da çıkarabilirsin. Konuşmadaki tekrarları, zaman damgalarını (örn: [0:05]) ve dağınık/sohbet tarzı ifadeleri temizleyerek nizami bir tarif formatına dönüştür.
+5. Çıktı kesinlikle ve YALNIZCA aşağıdaki JSON yapısına uyan geçerli bir JSON objesi olmalıdır:
 
 {
   "is_recipe": true,

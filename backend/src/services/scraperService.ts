@@ -63,6 +63,15 @@ function extractBlogBody(html: string): string {
 }
 
 /**
+ * YouTube URL'sinden 11 karakterlik benzersiz Video ID'sini çıkarır.
+ */
+function extractVideoId(url: string): string | null {
+  const reg = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/|youtube\.com\/shorts\/)([^"&?\/ ]{11})/;
+  const match = url.match(reg);
+  return match ? match[1] : null;
+}
+
+/**
  * YouTube videosundan metadata ve açıklama çeker.
  */
 async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
@@ -186,12 +195,40 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
       description = extractMetaTag(html, 'description') || extractMetaTag(html, 'og:description');
     }
 
+    // Altyazıyı (konuşma metnini) çekmeye çalış ve açıklamaya ekle
+    let transcript = '';
+    const videoId = extractVideoId(url);
+    if (videoId) {
+      try {
+        const transcriptUrl = `https://youtube-transcript.ai/transcript/${videoId}.txt`;
+        const response = await axios.get(transcriptUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+          },
+          timeout: 6000,
+          responseEncoding: 'utf8'
+        });
+        if (response.data && typeof response.data === 'string' && response.data.includes('## Transcript')) {
+          const parts = response.data.split('## Transcript');
+          transcript = parts.length > 1 ? parts[1].trim() : response.data.trim();
+        }
+      } catch (err: any) {
+        // Altyazı çekilemezse veya altyazı yoksa sessizce devam et
+        console.warn(`[scrapeYouTube] Could not fetch transcript for video ${videoId}:`, err.message);
+      }
+    }
+
+    let finalContent = description || title;
+    if (transcript) {
+      finalContent = `${finalContent}\n\n=== VİDEO KONUŞMA METNİ (TRANSKRİPT) ===\n\n${transcript}`;
+    }
+
     return {
       title,
       author,
       platform: 'youtube',
       originalUrl: url,
-      content: description || title
+      content: finalContent
     };
   } catch (error: any) {
     throw new Error(`youtube_inaccessible: YouTube video metadata could not be fetched. Details: ${error.message}`);
