@@ -9,6 +9,22 @@ const getHeaders = () => {
   return headers;
 };
 
+// Merkezi yetkilendirme kontrolü yapan istek yardımcısı (401 / 403 / Geçersiz token durumlarında otomatik çıkış yapar)
+const request = async (url, options = {}) => {
+  const res = await fetch(url, options);
+  
+  if (res.status === 401 || res.status === 403) {
+    localStorage.removeItem('token');
+    if (typeof window !== 'undefined') {
+      window.location.href = '/login';
+    }
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Oturum süreniz doldu, lütfen tekrar giriş yapın.');
+  }
+  
+  return res;
+};
+
 export const api = {
   /** POST /api/auth/login — Kullanıcı girişi */
   async login(email, password) {
@@ -36,7 +52,7 @@ export const api = {
 
   /** POST /api/import — Link gönder, job başlat */
   async startImport(url) {
-    const res = await fetch(`${API_BASE}/import`, {
+    const res = await request(`${API_BASE}/import`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ url }),
@@ -46,13 +62,13 @@ export const api = {
 
   /** GET /api/jobs/:id — Job durumunu sorgula (polling) */
   async getJobStatus(jobId) {
-    const res = await fetch(`${API_BASE}/jobs/${jobId}`, { headers: getHeaders() });
+    const res = await request(`${API_BASE}/jobs/${jobId}`, { headers: getHeaders() });
     return res.json();
   },
 
   /** POST /api/recipes — Onaylanan tarifi kaydet */
   async saveRecipe(data) {
-    const res = await fetch(`${API_BASE}/recipes`, {
+    const res = await request(`${API_BASE}/recipes`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify(data),
@@ -64,19 +80,19 @@ export const api = {
   async listRecipes(sortBy = 'created_at', order = 'desc', search = '') {
     const params = new URLSearchParams({ sortBy, order });
     if (search) params.append('search', search);
-    const res = await fetch(`${API_BASE}/recipes?${params}`, { headers: getHeaders() });
+    const res = await request(`${API_BASE}/recipes?${params}`, { headers: getHeaders() });
     return res.json();
   },
 
   /** GET /api/recipes/:id — Tek tarif detayı */
   async getRecipeDetail(id) {
-    const res = await fetch(`${API_BASE}/recipes/${id}`, { headers: getHeaders() });
+    const res = await request(`${API_BASE}/recipes/${id}`, { headers: getHeaders() });
     return res.json();
   },
 
   /** PUT /api/recipes/:id — Tarif güncelle */
   async updateRecipe(id, data) {
-    const res = await fetch(`${API_BASE}/recipes/${id}`, {
+    const res = await request(`${API_BASE}/recipes/${id}`, {
       method: 'PUT',
       headers: getHeaders(),
       body: JSON.stringify(data),
@@ -86,7 +102,7 @@ export const api = {
 
   /** DELETE /api/recipes/:id — Tarif sil */
   async deleteRecipe(id) {
-    const res = await fetch(`${API_BASE}/recipes/${id}`, { 
+    const res = await request(`${API_BASE}/recipes/${id}`, { 
       method: 'DELETE',
       headers: getHeaders()
     });

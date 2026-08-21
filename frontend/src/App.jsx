@@ -30,7 +30,15 @@ function AppContent() {
             return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
         }).join(''));
         const payload = JSON.parse(jsonPayload);
-        setUser(payload);
+        
+        // Token süresi dolmuş mu kontrol et (exp claims)
+        const currentTime = Math.floor(Date.now() / 1000);
+        if (payload.exp && payload.exp < currentTime) {
+          localStorage.removeItem('token');
+          setUser(null);
+        } else {
+          setUser(payload);
+        }
       } catch(e) {
         localStorage.removeItem('token');
       }
