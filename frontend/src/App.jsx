@@ -7,6 +7,7 @@ import Collection from './pages/Collection';
 import RecipeDetail from './pages/RecipeDetail';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Profile from './pages/Profile';
 
 function AppContent() {
   const [reviewData, setReviewData] = useState(null);
@@ -106,9 +107,14 @@ function AppContent() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '1rem', paddingLeft: '1rem', borderLeft: '1px solid var(--color-border-light)' }}>
             {user ? (
               <>
-                <span style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', fontWeight: 500 }}>
+                <NavLink
+                  to="/profile"
+                  className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                  style={{ fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none' }}
+                  onClick={(e) => handleNavClick(e, '/profile')}
+                >
                   👤 {user.username || user.email}
-                </span>
+                </NavLink>
                 <button onClick={handleLogout} className="btn btn-secondary btn-sm" style={{ padding: '0.25rem 0.75rem' }}>
                   Çıkış Yap
                 </button>
@@ -147,6 +153,7 @@ function AppContent() {
             <Route path="/register" element={<Register />} />
             <Route path="/collection" element={user ? <Collection /> : <Navigate to="/login" replace />} />
             <Route path="/recipes/:id" element={user ? <RecipeDetail /> : <Navigate to="/login" replace />} />
+            <Route path="/profile" element={user ? <Profile user={user} setUser={setUser} /> : <Navigate to="/login" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         )}

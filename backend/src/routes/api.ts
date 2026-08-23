@@ -18,6 +18,8 @@ const importLimiter = rateLimit({
 // 0. Auth Rotaları
 router.post('/auth/register', authController.register);
 router.post('/auth/login', authController.login);
+router.get('/auth/me', authenticateToken, authController.getProfile);
+router.put('/auth/profile', authenticateToken, authController.updateProfile);
 
 // 1. İçe Aktarma ve Durum Sorgulama Rotaları (Herkes Link Gönderebilir ve Görebilir)
 router.post('/import', optionalAuthenticateToken, importLimiter, importController.startImport);

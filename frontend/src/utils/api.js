@@ -108,4 +108,20 @@ export const api = {
     });
     return res.json();
   },
+
+  /** GET /api/auth/me — Profil detaylarını getir */
+  async getProfile() {
+    const res = await request(`${API_BASE}/auth/me`, { headers: getHeaders() });
+    return res.json();
+  },
+
+  /** PUT /api/auth/profile — Profil (kullanıcı adı/şifre) güncelle */
+  async updateProfile(data) {
+    const res = await request(`${API_BASE}/auth/profile`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
 };
