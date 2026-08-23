@@ -12,7 +12,7 @@ const STEPS = [
 /**
  * Ana Sayfa — Link yapıştırma ve asenkron işleme durumu
  */
-export default function Dashboard({ onRecipeReady }) {
+export default function Dashboard({ onRecipeReady, user }) {
   const [url, setUrl] = useState('');
   const [jobId, setJobId] = useState(null);
   const [jobStatus, setJobStatus] = useState(null);
@@ -141,19 +141,23 @@ export default function Dashboard({ onRecipeReady }) {
       {!jobId && (
         <div className="hero-section slide-up">
           <h1 className="hero-title">
-            Sosyal medyadaki <span className="highlight">tarifleri</span> topla
+            {user ? (
+              <>Bugün ne yiyelim, <span className="highlight">{user.username || user.email.split('@')[0]}</span>?</>
+            ) : (
+              <>Sosyal medyadaki <span className="highlight">tarifleri</span> topla</>
+            )}
           </h1>
           <p className="hero-subtitle">
-            Instagram, TikTok veya YouTube'dan bir yemek tarifi linki yapıştır.
-            Yapay zeka tarifi çıkarsın, sen düzenle ve koleksiyonuna kaydet.
+            Instagram, TikTok ve YouTube'daki yemek videolarını anında düzenlenebilir Türkçe tariflere dönüştür.
           </p>
 
           <form onSubmit={handleSubmit}>
             <div className="url-input-container">
+              <span className="url-input-icon">🔗</span>
               <input
                 className="input"
                 type="text"
-                placeholder="https://www.instagram.com/reel/..."
+                placeholder="Instagram, TikTok veya YouTube linkini yapıştır"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 disabled={isSubmitting}
@@ -165,13 +169,31 @@ export default function Dashboard({ onRecipeReady }) {
                 disabled={!url.trim() || isSubmitting}
                 id="import-button"
               >
-                {isSubmitting ? '⏳ Gönderiliyor...' : '🍳 Tarifi Çıkar'}
+                {isSubmitting ? '⏳ Gönderiliyor...' : <>Tarifi Çıkar <span style={{ marginLeft: '4px' }}>🪄</span></>}
               </button>
             </div>
           </form>
 
+          {/* Platform Badges (Screenshot 1) */}
+          <div className="platform-badges">
+            <span className="badge-item ig">
+              <span className="badge-icon">📸</span> Instagram
+            </span>
+            <span className="badge-item tt">
+              <span className="badge-icon">🎵</span> TikTok
+            </span>
+            <span className="badge-item yt">
+              <span className="badge-icon">🎥</span> YouTube
+            </span>
+          </div>
+
+          {/* Privacy Note (Screenshot 1) */}
+          <p className="privacy-note">
+            🔒 Tariflerin yalnızca sana görünür.
+          </p>
+
           {error && (
-            <div className="error-banner" style={{ maxWidth: 640, margin: '1rem auto 0' }}>
+            <div className="error-banner" style={{ maxWidth: 640, margin: '1rem auto 2rem' }}>
               <span>⚠️</span>
               <span style={{ marginRight: 'var(--space-4)' }}>{error}</span>
               <button className="btn btn-sm btn-secondary" onClick={handleRetry} style={{ marginLeft: 'auto' }}>
@@ -179,6 +201,31 @@ export default function Dashboard({ onRecipeReady }) {
               </button>
             </div>
           )}
+
+          {/* 3 Adımda Çalışır Bilgilendirme Kartları (Screenshot 1) */}
+          <div className="how-it-works">
+            <h3 className="how-it-works-title">3 adımda çalışır</h3>
+            <div className="steps-grid">
+              <div className="step-card">
+                <div className="step-number">1</div>
+                <div className="step-icon-bg">🔗</div>
+                <h4>Linki yapıştır</h4>
+                <p>Instagram, TikTok veya YouTube linkini gir.</p>
+              </div>
+              <div className="step-card">
+                <div className="step-number">2</div>
+                <div className="step-icon-bg">📋</div>
+                <h4>Kontrol et</h4>
+                <p>Algılanan içerikleri düzenle ve eksikleri tamamla.</p>
+              </div>
+              <div className="step-card">
+                <div className="step-number">3</div>
+                <div className="step-icon-bg">🍲</div>
+                <h4>Tarifine ekle</h4>
+                <p>Tarifini kaydet, not ekle ve dilediğin gibi kullan.</p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

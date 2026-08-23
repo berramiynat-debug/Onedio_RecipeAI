@@ -11,7 +11,12 @@ const getHeaders = () => {
 
 // Merkezi yetkilendirme kontrolü yapan istek yardımcısı (401 / 403 / Geçersiz token durumlarında otomatik çıkış yapar)
 const request = async (url, options = {}) => {
-  const res = await fetch(url, options);
+  let res;
+  try {
+    res = await fetch(url, options);
+  } catch (netErr) {
+    throw new Error(`Sunucuya bağlanılamadı. Lütfen sunucunun (Render) çalışır durumda olduğunu kontrol edin. (İstek: ${url})`);
+  }
   
   if (res.status === 401 || res.status === 403) {
     localStorage.removeItem('token');
@@ -20,6 +25,22 @@ const request = async (url, options = {}) => {
     }
     const errorData = await res.json().catch(() => ({}));
     throw new Error(errorData.error || 'Oturum süreniz doldu, lütfen tekrar giriş yapın.');
+  }
+
+  if (!res.ok) {
+    let errorMsg = `Sunucu hatası (Kod: ${res.status})`;
+    try {
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await res.json();
+        errorMsg = errorData.error || errorMsg;
+      } else {
+        errorMsg = `Sunucu güncel değil veya yönlendirme hatası oluştu (Kod: ${res.status}). Lütfen sunucunun (Render) başarıyla derlendiğinden ve 'Clear Cache and Deploy' yapıldığından emin olun.`;
+      }
+    } catch (e) {
+      // ignore
+    }
+    throw new Error(`${errorMsg} (İstek: ${url})`);
   }
   
   return res;

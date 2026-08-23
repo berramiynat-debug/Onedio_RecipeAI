@@ -121,6 +121,34 @@ a:hover {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background-image: url('/bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  padding: 3rem 1.5rem;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .app-layout {
+    padding: 1rem var(--space-2);
+  }
+}
+
+.app-container {
+  max-width: 1024px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 28px;
+  box-shadow: 0 20px 50px rgba(242, 140, 40, 0.15);
+  border: 1px solid rgba(242, 140, 40, 0.18);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 85vh;
+  backdrop-filter: blur(10px);
 }
 
 .app-header {
@@ -130,9 +158,6 @@ a:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 100;
   box-shadow: var(--shadow-sm);
 }
 
@@ -393,6 +418,162 @@ textarea.input {
 .url-input-container .btn {
   border-radius: calc(var(--radius-xl) - 4px);
   white-space: nowrap;
+}
+
+.url-input-icon {
+  font-size: 1.25rem;
+  color: var(--color-text-muted);
+  padding-left: var(--space-2);
+  display: flex;
+  align-items: center;
+}
+
+/* Platform Badges (Screenshot 1) */
+.platform-badges {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+  flex-wrap: wrap;
+}
+
+.badge-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid transparent;
+  transition: all var(--transition-fast);
+}
+
+.badge-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.badge-item.ig {
+  color: #E1306C;
+  background: #FFF0F5;
+  border-color: #FFD2E0;
+}
+
+.badge-item.tt {
+  color: #000000;
+  background: #F8F8F8;
+  border-color: #E5E5E5;
+}
+
+.badge-item.yt {
+  color: #FF0000;
+  background: #FFF5F5;
+  border-color: #FFE0E0;
+}
+
+.badge-icon {
+  font-size: 1rem;
+}
+
+/* Privacy Note (Screenshot 1) */
+.privacy-note {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-8);
+  font-weight: 500;
+}
+
+/* How It Works (Screenshot 1) */
+.how-it-works {
+  margin-top: var(--space-12);
+  padding-top: var(--space-8);
+  border-top: 1px dashed var(--color-border);
+}
+
+.how-it-works-title {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--color-navy-light);
+  margin-bottom: var(--space-6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: var(--space-6);
+}
+
+.step-card {
+  position: relative;
+  background: var(--color-white);
+  border: 1px solid var(--color-border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6) var(--space-4);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-base);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.step-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-orange);
+}
+
+.step-number {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-3);
+  width: 24px;
+  height: 24px;
+  background: var(--color-orange);
+  color: var(--color-white);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-icon-bg {
+  width: 48px;
+  height: 48px;
+  background: var(--color-orange-subtle);
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  margin-bottom: var(--space-4);
+}
+
+.step-card h4 {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-navy);
+  margin-bottom: var(--space-2);
+}
+
+.step-card p {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+  .steps-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
 }
 
 /* ============================================
