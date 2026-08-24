@@ -37,4 +37,5 @@ export const config = {
   // Timeout süreleri (milisaniye cinsinden)
   jobTimeoutMs: 60000, // 60 saniye
   instagramCookie: process.env.INSTAGRAM_COOKIE || '',
+  instagramProxyUrl: process.env.INSTAGRAM_PROXY_URL || '',
 };

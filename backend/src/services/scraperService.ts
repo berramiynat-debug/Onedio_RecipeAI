@@ -314,7 +314,12 @@ async function scrapeInstagram(url: string): Promise<ScrapedMetadata> {
       headers['Cookie'] = config.instagramCookie;
     }
 
-    const { data: html } = await axios.get(url, {
+    let fetchUrl = url;
+    if (config.instagramProxyUrl) {
+      fetchUrl = `${config.instagramProxyUrl}?url=${encodeURIComponent(url)}`;
+    }
+
+    const { data: html } = await axios.get(fetchUrl, {
       headers,
       responseEncoding: 'utf8',
       timeout: 8000,
