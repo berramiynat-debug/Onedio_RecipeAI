@@ -169,7 +169,7 @@ export default function Dashboard({ onRecipeReady, user }) {
                 disabled={!url.trim() || isSubmitting}
                 id="import-button"
               >
-                {isSubmitting ? '⏳ Gönderiliyor...' : <>Tarifi Çıkar <span style={{ marginLeft: '4px' }}>🪄</span></>}
+                {isSubmitting ? '⏳ Gönderiliyor...' : <>Tarifi Çıkar <span style={{ marginLeft: '4px' }}>✨</span></>}
               </button>
             </div>
           </form>

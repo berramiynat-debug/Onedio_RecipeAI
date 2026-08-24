@@ -293,8 +293,8 @@ async function scrapeInstagram(url: string): Promise<ScrapedMetadata> {
     });
 
     // Giriş duvarına takıldıysak veya sayfa içeriği boşsa uyaralım
-    if (html.includes('/accounts/login') || html.includes('Login • Instagram')) {
-      console.warn('[scrapeInstagram] Warning: Redirected to login page.');
+    if (html.includes('/accounts/login') || html.includes('Login • Instagram') || html.includes('Before you continue to Instagram') || html.length < 5000) {
+      throw new Error('instagram_inaccessible: Instagram login wall or consent screen encountered.');
     }
 
     const ogTitle = extractMetaTag(html, 'og:title');
