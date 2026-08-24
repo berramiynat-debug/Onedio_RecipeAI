@@ -236,6 +236,30 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
 }
 
 /**
+ * Instagram HTML'i içindeki window.__additionalDataLoaded veya benzeri JSON veri yapılarından
+ * kırpılmamış (untruncated), orijinal tam tarif metnini ayıklar.
+ */
+function extractInstagramFullCaption(html: string): string | null {
+  // edge_media_to_caption içindeki tam caption bloğunu arayalım
+  const captionBlockMatch = html.match(/"edge_media_to_caption"\s*:\s*\{\s*"edges"\s*:\s*\[\s*\{\s*"node"\s*:\s*\{\s*"text"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  if (captionBlockMatch && captionBlockMatch[1]) {
+    try {
+      const escapedText = captionBlockMatch[1];
+      // JSON olarak çözerek tırnak ve unicode karakterlerini düzeltelim
+      return JSON.parse(`"${escapedText}"`);
+    } catch (e) {
+      // JSON çözümü başarısız olursa manuel düzeltme fallback'i
+      return captionBlockMatch[1]
+        .replace(/\\u([0-9a-fA-F]{4})/g, (_, grp) => String.fromCharCode(parseInt(grp, 16)))
+        .replace(/\\n/g, '\n')
+        .replace(/\\"/g, '"')
+        .replace(/\\'/g, "'");
+    }
+  }
+  return null;
+}
+
+/**
  * Instagram gönderisinden metadata ve açıklama çeker.
  */
 async function scrapeInstagram(url: string): Promise<ScrapedMetadata> {
@@ -253,7 +277,7 @@ async function scrapeInstagram(url: string): Promise<ScrapedMetadata> {
       maxContentLength: config.maxContentLength
     });
 
-    const ogDescription = extractMetaTag(html, 'og:description') || extractMetaTag(html, 'description');
+    const ogDescription = extractInstagramFullCaption(html) || extractMetaTag(html, 'og:description') || extractMetaTag(html, 'description');
     if (ogDescription && ogDescription.trim().length > 10) {
       const ogTitle = extractMetaTag(html, 'og:title') || 'Instagram Tarifi';
       const titleMatch = ogTitle.replace(/on Instagram:.*$/i, '').trim();
@@ -306,7 +330,7 @@ async function scrapeInstagram(url: string): Promise<ScrapedMetadata> {
       }
     }
 
-    let description = extractMetaTag(html, 'og:description') || extractMetaTag(html, 'description');
+    let description = extractInstagramFullCaption(html) || extractMetaTag(html, 'og:description') || extractMetaTag(html, 'description');
     
     if (description) {
       description = description.replace(/^.*?on Instagram:[\s"']*/i, '');
