@@ -354,9 +354,25 @@ async function scrapeInstagram(url: string): Promise<ScrapedMetadata> {
       maxContentLength: config.maxContentLength
     });
 
-    // Giriş duvarına takıldıysak veya sayfa içeriği boşsa uyaralım
-    if (html.includes('/accounts/login') || html.includes('Login • Instagram') || html.includes('Before you continue to Instagram') || html.length < 5000) {
-      throw new Error('instagram_inaccessible: Instagram login wall or consent screen encountered.');
+    const ogDescription = extractMetaTag(html, 'og:description') || extractMetaTag(html, 'description');
+    const fullCaption = extractInstagramFullCaption(html);
+
+    // Eğer ikisi de boşsa veya sadece giriş sayfası/çerez duvarı açıklamalarıysa, gönderiye erişilememiştir!
+    const isLoginWall = html.includes('/accounts/login') || 
+                        html.includes('Login • Instagram') || 
+                        html.includes('Giriş Yap') ||
+                        html.includes('Instagram\'a devam etmeden önce') ||
+                        html.includes('Before you continue to Instagram') ||
+                        html.length < 5000;
+
+    const isGenericMeta = !fullCaption && (!ogDescription || 
+                          ogDescription.includes('fotoğraf, video ve mesaj') || 
+                          ogDescription.includes('Create an account or log in') || 
+                          ogDescription.includes('Welcome back to Instagram') ||
+                          ogDescription.includes('Instagram\'a tekrar hoş geldin'));
+
+    if (isLoginWall || isGenericMeta) {
+      throw new Error('instagram_inaccessible: Instagram login wall, consent screen or block page encountered.');
     }
 
     const ogTitle = extractMetaTag(html, 'og:title');
