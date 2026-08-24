@@ -37,4 +37,5 @@ export const config = {
   // Timeout süreleri (milisaniye cinsinden)
   jobTimeoutMs: 60000, // 60 saniye
   metaAppToken: process.env.META_APP_TOKEN || '',
+  rapidapiApiKey: process.env.RAPIDAPI_API_KEY || '',
 };

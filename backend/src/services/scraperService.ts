@@ -301,6 +301,39 @@ async function scrapeInstagram(url: string): Promise<ScrapedMetadata> {
       console.warn(`[scrapeInstagram] Meta Graph oEmbed failed: ${e.message}. Falling back to scraping.`);
     }
   }
+  // 0.5. RapidAPI Instagram Scraper Fallback (Eğer api key tanımlıysa %100 çalışır)
+  if (config.rapidapiApiKey) {
+    try {
+      const shortcode = url.match(/\/p\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/\/reel\/([a-zA-Z0-9_-]+)/)?.[1];
+      if (shortcode) {
+        const rapidApiUrl = `https://instagram-bulk-scraper-latest.p.rapidapi.com/media_info_v2?code=${shortcode}`;
+        await validateUrlForSsrf(rapidApiUrl);
+        const { data } = await axios.get(rapidApiUrl, {
+          headers: {
+            'x-rapidapi-key': config.rapidapiApiKey,
+            'x-rapidapi-host': 'instagram-bulk-scraper-latest.p.rapidapi.com'
+          },
+          timeout: 8000
+        });
+
+        const caption = data.data?.caption?.text || data.caption?.text || '';
+        const author = data.data?.owner?.username || data.owner?.username || 'Instagram Üreticisi';
+        
+        if (caption && caption.length > 5) {
+          return {
+            title: 'Instagram Tarifi',
+            author,
+            platform: 'instagram',
+            originalUrl: url,
+            content: caption
+          };
+        }
+      }
+    } catch (e: any) {
+      console.warn(`[scrapeInstagram] RapidAPI instagram-bulk-scraper-latest failed: ${e.message}. Falling back to scraping.`);
+    }
+  }
+
   // 1. ddinstagram.com proxy'sini dene (Giriş duvarını aşmak için)
   const ddUrl = url.replace(/(www\.)?instagram\.com/, 'ddinstagram.com');
   try {
