@@ -36,6 +36,4 @@ export const config = {
   maxContentLength: parseInt(process.env.MAX_CONTENT_LENGTH || '5242880', 10), // 5MB
   // Timeout süreleri (milisaniye cinsinden)
   jobTimeoutMs: 60000, // 60 saniye
-  instagramCookie: process.env.INSTAGRAM_COOKIE || '',
-  instagramProxyUrl: process.env.INSTAGRAM_PROXY_URL || '',
 };
