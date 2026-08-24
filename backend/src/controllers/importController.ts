@@ -99,6 +99,72 @@ async function runImportJob(jobId: string, initialUrl: string) {
   }
 }
 
+async function runTextExtractionJob(jobId: string, rawText: string) {
+  try {
+    await jobRepo.updateJobStatus(jobId, 'processing', 'extracting');
+
+    let recipeData: any;
+
+    if (config.groqApiKey || config.geminiApiKey) {
+      const recipe = await extractRecipeFromText(rawText);
+
+      if (!recipe.is_recipe) {
+        throw new Error(`no_recipe: Metinde yemek tarifi bulunamadı.`);
+      }
+
+      recipeData = {
+        ...recipe,
+        platform: 'custom',
+        author: 'Kullanıcı Metni',
+        original_url: null
+      };
+    } else {
+      recipeData = {
+        title: 'Örnek Tarif',
+        servings: 4,
+        prep_time: 15,
+        cook_time: 20,
+        platform: 'custom',
+        author: 'Kullanıcı Metni',
+        original_url: null,
+        confidence_map: {
+          title: 'high',
+          ingredients: 'low',
+          steps: 'low'
+        },
+        ingredients: [
+          { amount: 1, unit: 'adet', name: 'Örnek Malzeme' }
+        ],
+        steps: [
+          'Yapay Zeka API Anahtarı eksik olduğu için mock tarif döndürüldü.',
+          `Metin: ${rawText.substring(0, 100)}`
+        ]
+      };
+    }
+
+    await jobRepo.updateJobStatus(
+      jobId, 
+      'ready_for_review', 
+      null, 
+      null, 
+      null, 
+      recipeData
+    );
+
+  } catch (error: any) {
+    console.error(`Text Job ${jobId} failed:`, error.message);
+    let errorClass: 'invalid_input' | 'inaccessible' | 'no_recipe' | 'system_error' = 'system_error';
+    let errorMessage = error.message || 'Bilinmeyen bir sistem hatası oluştu.';
+
+    if (error.message.includes('no_recipe')) {
+      errorClass = 'no_recipe';
+      errorMessage = 'Bu içerikte yemek tarifi bulamadık (Alakasız içerik).';
+    }
+
+    await jobRepo.updateJobStatus(jobId, 'failed', null, errorClass, errorMessage);
+  }
+}
+
 export const importController = {
   /**
    * POST /api/import
@@ -107,7 +173,29 @@ export const importController = {
   async startImport(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).user ? (req as any).user.id : null;
-      const { url } = req.body;
+      const { url, rawText } = req.body;
+
+      // Eğer doğrudan metin gönderildiyse
+      if (rawText && typeof rawText === 'string') {
+        const jobId = uuidv4();
+        await jobRepo.createJob(jobId, userId, '');
+
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('job_timeout: İşlem çok uzun sürdü.')), config.jobTimeoutMs);
+        });
+
+        Promise.race([runTextExtractionJob(jobId, rawText), timeoutPromise]).catch(async (error: any) => {
+          console.error(`Text Job ${jobId} failed via timeout/unhandled error:`, error.message);
+          await jobRepo.updateJobStatus(jobId, 'failed', null, 'system_error', error.message || 'Zaman aşımı veya beklenmeyen hata.');
+        });
+
+        res.status(202).json({
+          jobId,
+          status: 'queued',
+          message: 'Tarif çıkarma işlemi sıraya alındı.'
+        });
+        return;
+      }
 
       if (!url || typeof url !== 'string') {
         res.status(400).json({ 

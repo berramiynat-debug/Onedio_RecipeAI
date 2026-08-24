@@ -71,12 +71,13 @@ export const api = {
     return data;
   },
 
-  /** POST /api/import — Link gönder, job başlat */
-  async startImport(url) {
+  /** POST /api/import — Link veya ham metin gönder, job başlat */
+  async startImport(urlOrText, isRawText = false) {
+    const body = isRawText ? { rawText: urlOrText } : { url: urlOrText };
     const res = await request(`${API_BASE}/import`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ url }),
+      body: JSON.stringify(body),
     });
     return res.json();
   },

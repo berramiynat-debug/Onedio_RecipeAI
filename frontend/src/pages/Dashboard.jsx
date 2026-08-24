@@ -14,6 +14,8 @@ const STEPS = [
  */
 export default function Dashboard({ onRecipeReady, user }) {
   const [url, setUrl] = useState('');
+  const [rawText, setRawText] = useState('');
+  const [showTextFallback, setShowTextFallback] = useState(false);
   const [jobId, setJobId] = useState(null);
   const [jobStatus, setJobStatus] = useState(null);
   const [subStatus, setSubStatus] = useState(null);
@@ -38,6 +40,9 @@ export default function Dashboard({ onRecipeReady, user }) {
           setError(data.error_message || 'İşlem sırasında bir hata oluştu.');
           setErrorClass(data.error_class || 'system_error');
           setJobId(null);
+          if (data.error_class === 'inaccessible') {
+            setShowTextFallback(true);
+          }
         } else if (data.status !== 'queued' && data.status !== 'processing') {
           // Tanımsız durum → jenerik "işleniyor" (FR-25)
           setSubStatus(null);
@@ -120,6 +125,33 @@ export default function Dashboard({ onRecipeReady, user }) {
     setIsSubmitting(false);
   };
 
+  const handleTextSubmit = async (e) => {
+    e.preventDefault();
+    if (!rawText.trim()) return;
+    setError(null);
+    setErrorClass(null);
+    setIsSubmitting(true);
+
+    try {
+      const result = await api.startImport(rawText, true);
+
+      if (result.error_class) {
+        setError(result.message);
+        setErrorClass(result.error_class);
+        setIsSubmitting(false);
+        return;
+      }
+
+      setJobId(result.jobId);
+      setJobStatus('queued');
+      startPolling(result.jobId);
+    } catch (err) {
+      setError('Sunucuya bağlanılamadı. Lütfen backend\'in çalıştığından emin olun.');
+      setErrorClass('system_error');
+    }
+    setIsSubmitting(false);
+  };
+
   const handleRetry = () => {
     setError(null);
     setErrorClass(null);
@@ -127,6 +159,8 @@ export default function Dashboard({ onRecipeReady, user }) {
     setJobStatus(null);
     setSubStatus(null);
     setUrl('');
+    setRawText('');
+    setShowTextFallback(false);
   };
 
   // Active step index hesaplama
@@ -151,28 +185,78 @@ export default function Dashboard({ onRecipeReady, user }) {
             Instagram, TikTok ve YouTube'daki yemek videolarını anında düzenlenebilir Türkçe tariflere dönüştür.
           </p>
 
-          <form onSubmit={handleSubmit}>
-            <div className="url-input-container">
-              <span className="url-input-icon">🔗</span>
-              <input
-                className="input"
-                type="text"
-                placeholder="Instagram, TikTok veya YouTube linkini yapıştır"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                disabled={isSubmitting}
-                id="url-input"
-              />
-              <button
-                className="btn btn-primary"
-                type="submit"
-                disabled={!url.trim() || isSubmitting}
-                id="import-button"
-              >
-                {isSubmitting ? '⏳ Gönderiliyor...' : <>Tarifi Çıkar <span style={{ marginLeft: '4px' }}>✨</span></>}
-              </button>
-            </div>
-          </form>
+          {showTextFallback ? (
+            <form onSubmit={handleTextSubmit} style={{ maxWidth: 600, margin: '1rem auto' }} className="slide-up">
+              <div className="card" style={{ padding: 'var(--space-6)', textAlign: 'left', background: 'rgba(255, 255, 255, 0.95)', border: '1px solid var(--color-orange-light)', borderRadius: 'var(--border-radius-lg)', boxShadow: 'var(--shadow-md)' }}>
+                <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--color-navy)', marginBottom: 'var(--space-1)' }}>
+                  📝 Tarif Açıklamasını Yapıştırın
+                </h3>
+                <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-4)' }}>
+                  Instagram güvenlik duvarı veya erişim engeli nedeniyle bu gönderiyi doğrudan okuyamadık. Gönderinin açıklama (caption) yazısını kopyalayıp aşağıdaki kutuya yapıştırarak tarifi anında çıkarabilirsiniz!
+                </p>
+                <textarea
+                  className="input"
+                  style={{ minHeight: '150px', resize: 'vertical', width: '100%', marginBottom: 'var(--space-4)', padding: 'var(--space-3)', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--color-navy-light)' }}
+                  placeholder="Gönderi altındaki yemek tarifi yazılarını buraya yapıştırın..."
+                  value={rawText}
+                  onChange={(e) => setRawText(e.target.value)}
+                  disabled={isSubmitting}
+                />
+                <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+                  <button
+                    className="btn btn-primary"
+                    type="submit"
+                    disabled={!rawText.trim() || isSubmitting}
+                    style={{ flex: 1 }}
+                  >
+                    {isSubmitting ? '⏳ Tarif Çıkarılıyor...' : <>Tarifi Çıkar <span style={{ marginLeft: '4px' }}>✨</span></>}
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    type="button"
+                    onClick={handleRetry}
+                    disabled={isSubmitting}
+                  >
+                    Vazgeç
+                  </button>
+                </div>
+              </div>
+            </form>
+          ) : (
+            <>
+              <form onSubmit={handleSubmit}>
+                <div className="url-input-container">
+                  <span className="url-input-icon">🔗</span>
+                  <input
+                    className="input"
+                    type="text"
+                    placeholder="Instagram, TikTok veya YouTube linkini yapıştır"
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    disabled={isSubmitting}
+                    id="url-input"
+                  />
+                  <button
+                    className="btn btn-primary"
+                    type="submit"
+                    disabled={!url.trim() || isSubmitting}
+                    id="import-button"
+                  >
+                    {isSubmitting ? '⏳ Gönderiliyor...' : <>Tarifi Çıkar <span style={{ marginLeft: '4px' }}>✨</span></>}
+                  </button>
+                </div>
+              </form>
+              <div style={{ marginTop: 'var(--space-4)' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setShowTextFallback(true)} 
+                  style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-navy)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
+                >
+                  Veya elinizdeki tarif metnini doğrudan yapıştırın
+                </button>
+              </div>
+            </>
+          )}
 
           {/* Platform Badges (Screenshot 1) */}
           <div className="platform-badges">
