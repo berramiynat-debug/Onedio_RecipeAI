@@ -239,8 +239,48 @@ async function scrapeYouTube(url: string): Promise<ScrapedMetadata> {
  * Instagram gönderisinden metadata ve açıklama çeker.
  */
 async function scrapeInstagram(url: string): Promise<ScrapedMetadata> {
+  // 1. ddinstagram.com proxy'sini dene (Giriş duvarını aşmak için)
+  const ddUrl = url.replace(/(www\.)?instagram\.com/, 'ddinstagram.com');
   try {
-    // Instagram korumaları nedeniyle doğrudan HTML çekip Open Graph okumak en pratik çözümdür
+    await validateUrlForSsrf(ddUrl);
+    const { data: html } = await axios.get(ddUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
+      },
+      responseEncoding: 'utf8',
+      timeout: 5000,
+      maxContentLength: config.maxContentLength
+    });
+
+    const ogDescription = extractMetaTag(html, 'og:description') || extractMetaTag(html, 'description');
+    if (ogDescription && ogDescription.trim().length > 10) {
+      const ogTitle = extractMetaTag(html, 'og:title') || 'Instagram Tarifi';
+      const titleMatch = ogTitle.replace(/on Instagram:.*$/i, '').trim();
+      let author = 'Instagram Üreticisi';
+      const authorMatch = ogTitle.match(/^(.*?) on Instagram:/i);
+      if (authorMatch) {
+        author = authorMatch[1];
+      }
+
+      let description = ogDescription
+        .replace(/^.*?on Instagram:[\s"']*/i, '')
+        .replace(/^[0-9,.]+ (Likes|Beğenme), [0-9,.]+ Comments (Yorum|-).*?:\s*/i, '');
+
+      return {
+        title: titleMatch,
+        author,
+        platform: 'instagram',
+        originalUrl: url,
+        content: description || titleMatch
+      };
+    }
+  } catch (e: any) {
+    console.warn(`[scrapeInstagram] ddinstagram proxy failed: ${e.message}. Direct fetch'e geçiliyor.`);
+  }
+
+  // 2. Doğrudan Instagram'dan çekmeyi dene (Login yönlendirmesi veya çerez engelini göze alarak)
+  try {
     await validateUrlForSsrf(url);
     const { data: html } = await axios.get(url, {
       headers: {
@@ -252,8 +292,12 @@ async function scrapeInstagram(url: string): Promise<ScrapedMetadata> {
       maxContentLength: config.maxContentLength
     });
 
+    // Giriş duvarına takıldıysak veya sayfa içeriği boşsa uyaralım
+    if (html.includes('/accounts/login') || html.includes('Login • Instagram')) {
+      console.warn('[scrapeInstagram] Warning: Redirected to login page.');
+    }
+
     const ogTitle = extractMetaTag(html, 'og:title');
-    // Instagram'da og:title şöyledir: "Chef Ahmet on Instagram: 'Tavuklu Makarna Tarifi...'"
     let author = 'Instagram Üreticisi';
     if (ogTitle) {
       const authorMatch = ogTitle.match(/^(.*?) on Instagram:/i);
@@ -262,12 +306,10 @@ async function scrapeInstagram(url: string): Promise<ScrapedMetadata> {
       }
     }
 
-    // Instagram'da og:description tüm caption metnini içerir
     let description = extractMetaTag(html, 'og:description') || extractMetaTag(html, 'description');
     
-    // Açıklamadan "X Likes, Y Comments - ..." gibi sosyal medya istatistiklerini temizle
     if (description) {
-      description = description.replace(/^.*?on Instagram:[\s"']*/i, ''); // Instagram ön ekini temizle
+      description = description.replace(/^.*?on Instagram:[\s"']*/i, '');
       description = description.replace(/^[0-9,.]+ (Likes|Beğenme), [0-9,.]+ Comments (Yorum|-).*?:\s*/i, '');
     }
 
@@ -294,7 +336,7 @@ async function scrapeTikTok(url: string): Promise<ScrapedMetadata> {
     let author = 'TikTok Üreticisi';
     let content = '';
 
-    // 1. oEmbed API'sini dene
+    // 1. oEmbed API'sini dene (TikTok'ta oEmbed açıklamayı/başlığı 100% getirir ve bot blokajı yemez)
     try {
       const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`;
       await validateUrlForSsrf(oembedUrl);
@@ -304,29 +346,39 @@ async function scrapeTikTok(url: string): Promise<ScrapedMetadata> {
       });
       title = data.title || '';
       author = data.author_name || 'TikTok Üreticisi';
-    } catch (e) {
-      // Başarısız olursa HTML'den devam
+    } catch (e: any) {
+      console.warn('[scrapeTikTok] oEmbed failed:', e.message);
     }
 
-    // 2. HTML'i indirip Open Graph tag'lerini parse edelim
-    await validateUrlForSsrf(url);
-    const { data: html } = await axios.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
-      },
-      responseEncoding: 'utf8',
-      timeout: 8000,
-      maxContentLength: config.maxContentLength
-    });
+    // 2. Doğrudan HTML'i indirip Open Graph tag'lerini parse etmeyi dene
+    let ogDescription = '';
+    try {
+      await validateUrlForSsrf(url);
+      const { data: html } = await axios.get(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
+        },
+        responseEncoding: 'utf8',
+        timeout: 8000,
+        maxContentLength: config.maxContentLength
+      });
 
-    const ogTitle = extractMetaTag(html, 'og:title');
-    if (!title && ogTitle) {
-      title = ogTitle;
+      const ogTitle = extractMetaTag(html, 'og:title');
+      if (!title && ogTitle) {
+        title = ogTitle;
+      }
+      ogDescription = extractMetaTag(html, 'og:description');
+    } catch (htmlErr: any) {
+      // Eğer doğrudan HTML indirme engellendiyse (Render sunucu IP'lerinde çok yaygın), oEmbed sonucunu kullanıp devam et!
+      console.warn(`[scrapeTikTok] Direct HTML fetch failed: ${htmlErr.message}. Relying on oEmbed title.`);
     }
 
-    const ogDescription = extractMetaTag(html, 'og:description');
     content = ogDescription || title;
+
+    if (!content) {
+      throw new Error('TikTok video description/title is empty or inaccessible.');
+    }
 
     return {
       title: title || 'TikTok Videosu',
