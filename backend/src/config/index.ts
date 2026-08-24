@@ -36,4 +36,5 @@ export const config = {
   maxContentLength: parseInt(process.env.MAX_CONTENT_LENGTH || '5242880', 10), // 5MB
   // Timeout süreleri (milisaniye cinsinden)
   jobTimeoutMs: 60000, // 60 saniye
+  metaAppToken: process.env.META_APP_TOKEN || '',
 };

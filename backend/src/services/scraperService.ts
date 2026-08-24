@@ -260,9 +260,47 @@ function extractInstagramFullCaption(html: string): string | null {
 }
 
 /**
+ * Meta oEmbed HTML (blockquote) içeriği içinden orijinal post açıklamasını ayıklar.
+ */
+function extractCaptionFromOembedHtml(html: string): string | null {
+  const match = html.match(/<p[^>]*>\s*<a[^>]*>([\s\S]*?)<\/a>\s*<\/p>/i);
+  if (match && match[1]) {
+    return match[1]
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#039;/g, "'")
+      .replace(/&amp;/g, '&');
+  }
+  return null;
+}
+
+/**
  * Instagram gönderisinden metadata ve açıklama çeker.
  */
 async function scrapeInstagram(url: string): Promise<ScrapedMetadata> {
+  // 0. Meta Geliştirici oEmbed API'sini dene (Eğer token tanımlıysa %100 kararlı ve güvenli çalışır)
+  if (config.metaAppToken) {
+    try {
+      const oembedUrl = `https://graph.facebook.com/v18.0/instagram_oembed?url=${encodeURIComponent(url)}&access_token=${config.metaAppToken}`;
+      await validateUrlForSsrf(oembedUrl);
+      const { data } = await axios.get(oembedUrl, { timeout: 5000 });
+      
+      const caption = extractCaptionFromOembedHtml(data.html || '') || data.title || '';
+      
+      if (caption && caption.length > 5) {
+        return {
+          title: data.title || 'Instagram Tarifi',
+          author: data.author_name || 'Instagram Üreticisi',
+          platform: 'instagram',
+          originalUrl: url,
+          content: caption
+        };
+      }
+    } catch (e: any) {
+      console.warn(`[scrapeInstagram] Meta Graph oEmbed failed: ${e.message}. Falling back to scraping.`);
+    }
+  }
   // 1. ddinstagram.com proxy'sini dene (Giriş duvarını aşmak için)
   const ddUrl = url.replace(/(www\.)?instagram\.com/, 'ddinstagram.com');
   try {
