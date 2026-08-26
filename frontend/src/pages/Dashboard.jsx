@@ -317,7 +317,7 @@ export default function Dashboard({ onRecipeReady, user }) {
                   <input
                     className="input"
                     type="text"
-                    placeholder="YouTube linkini yapıştır"
+                    placeholder="linki yapıştır!"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     disabled={isSubmitting}
