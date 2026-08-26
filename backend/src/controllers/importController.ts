@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { canonicalizeUrl, isAllowedDomain, resolveRedirectsSafely } from '../services/urlService';
 import { jobRepo } from '../database/repos';
 import { scrapeUrl } from '../services/scraperService';
-import { extractRecipeFromText } from '../services/llmService';
+import { extractRecipeFromText, extractRecipeFromImage } from '../services/llmService';
 import { config } from '../config';
 
 // Sabit demo kullanıcı ID'si silindi
@@ -165,6 +165,52 @@ async function runTextExtractionJob(jobId: string, rawText: string) {
   }
 }
 
+async function runImageExtractionJob(jobId: string, base64Image: string, mimeType: string) {
+  try {
+    await jobRepo.updateJobStatus(jobId, 'processing', 'extracting');
+
+    let recipeData: any;
+
+    if (config.groqApiKey || config.geminiApiKey) {
+      const recipe = await extractRecipeFromImage(base64Image, mimeType);
+
+      if (!recipe.is_recipe) {
+        throw new Error(`no_recipe: Görselde yemek tarifi bulunamadı.`);
+      }
+
+      recipeData = {
+        ...recipe,
+        platform: 'custom',
+        author: 'Ekran Görüntüsü',
+        original_url: null
+      };
+    } else {
+      throw new Error('system_error: Yapay zeka servis anahtarı bulunamadı.');
+    }
+
+    await jobRepo.updateJobStatus(
+      jobId, 
+      'ready_for_review', 
+      null, 
+      null, 
+      null, 
+      recipeData
+    );
+
+  } catch (error: any) {
+    console.error(`Image Job ${jobId} failed:`, error.message);
+    let errorClass: 'invalid_input' | 'inaccessible' | 'no_recipe' | 'system_error' = 'system_error';
+    let errorMessage = error.message || 'Görsel işlenirken bilinmeyen bir hata oluştu.';
+
+    if (error.message.includes('no_recipe')) {
+      errorClass = 'no_recipe';
+      errorMessage = 'Bu ekran görüntüsünde yemek tarifi bulamadık (Alakasız görsel).';
+    }
+
+    await jobRepo.updateJobStatus(jobId, 'failed', null, errorClass, errorMessage);
+  }
+}
+
 export const importController = {
   /**
    * POST /api/import
@@ -173,7 +219,30 @@ export const importController = {
   async startImport(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).user ? (req as any).user.id : null;
-      const { url, rawText } = req.body;
+      const { url, rawText, image, mimeType } = req.body;
+
+      // Eğer görsel gönderildiyse
+      if (image && typeof image === 'string') {
+        const jobId = uuidv4();
+        await jobRepo.createJob(jobId, userId, '');
+
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('job_timeout: Görsel işleme zaman aşımına uğradı.')), config.jobTimeoutMs);
+        });
+
+        const imageMimeType = mimeType || 'image/png';
+        Promise.race([runImageExtractionJob(jobId, image, imageMimeType), timeoutPromise]).catch(async (error: any) => {
+          console.error(`Image Job ${jobId} failed via timeout/unhandled error:`, error.message);
+          await jobRepo.updateJobStatus(jobId, 'failed', null, 'system_error', error.message || 'Zaman aşımı veya beklenmeyen hata.');
+        });
+
+        res.status(202).json({
+          jobId,
+          status: 'queued',
+          message: 'Görselden tarif çıkarma işlemi başlatıldı.'
+        });
+        return;
+      }
 
       // Eğer doğrudan metin gönderildiyse
       if (rawText && typeof rawText === 'string') {

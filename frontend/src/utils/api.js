@@ -71,9 +71,16 @@ export const api = {
     return data;
   },
 
-  /** POST /api/import — Link veya ham metin gönder, job başlat */
-  async startImport(urlOrText, isRawText = false) {
-    const body = isRawText ? { rawText: urlOrText } : { url: urlOrText };
+  /** POST /api/import — Link, ham metin veya görsel gönder, job başlat */
+  async startImport(payload, mode = 'url') {
+    let body = {};
+    if (mode === 'text') {
+      body = { rawText: payload };
+    } else if (mode === 'image') {
+      body = { image: payload.base64, mimeType: payload.mimeType };
+    } else {
+      body = { url: payload };
+    }
     const res = await request(`${API_BASE}/import`, {
       method: 'POST',
       headers: getHeaders(),

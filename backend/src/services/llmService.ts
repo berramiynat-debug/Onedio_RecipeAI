@@ -60,18 +60,7 @@ const recipeZodSchema = z.object({
   })
 });
 
-/**
- * Ham metinden yapay zeka (Groq / Gemini) kullanarak Türkçe tarif verilerini ayıklar
- */
-export async function extractRecipeFromText(text: string): Promise<ExtractedRecipe> {
-  const groqApiKey = config.groqApiKey || process.env.GROQ_API_KEY;
-  const geminiApiKey = config.geminiApiKey || process.env.GEMINI_API_KEY;
-
-  if (!groqApiKey && !geminiApiKey) {
-    throw new Error('system_error: Neither GROQ_API_KEY nor GEMINI_API_KEY is configured.');
-  }
-
-  const systemInstruction = `
+const SYSTEM_INSTRUCTION = `
 Aşağıda verilen ham metni analiz et ve içerisinden yemek tarifini çıkar.
 
 KURALLAR:
@@ -102,6 +91,17 @@ KURALLAR:
 }
 `;
 
+/**
+ * Ham metinden yapay zeka (Groq / Gemini) kullanarak Türkçe tarif verilerini ayıklar
+ */
+export async function extractRecipeFromText(text: string): Promise<ExtractedRecipe> {
+  const groqApiKey = config.groqApiKey || process.env.GROQ_API_KEY;
+  const geminiApiKey = config.geminiApiKey || process.env.GEMINI_API_KEY;
+
+  if (!groqApiKey && !geminiApiKey) {
+    throw new Error('system_error: Neither GROQ_API_KEY nor GEMINI_API_KEY is configured.');
+  }
+
   try {
     let responseText = '';
 
@@ -110,7 +110,7 @@ KURALLAR:
       const groq = new Groq({ apiKey: groqApiKey });
       const chatCompletion = await groq.chat.completions.create({
         messages: [
-          { role: 'system', content: systemInstruction },
+          { role: 'system', content: SYSTEM_INSTRUCTION },
           { role: 'user', content: text }
         ],
         model: 'openai/gpt-oss-120b',
@@ -125,7 +125,7 @@ KURALLAR:
         model: 'gemini-3.5-flash',
         contents: text,
         config: {
-          systemInstruction,
+          systemInstruction: SYSTEM_INSTRUCTION,
           responseMimeType: 'application/json',
           temperature: 0.1
         }
@@ -192,4 +192,83 @@ function validateHallucinations(recipe: ExtractedRecipe, sourceText: string): Ex
   }
 
   return recipe;
+}
+
+/**
+ * Ekran görüntüsünden (base64) yapay zeka (Groq Vision / Gemini) kullanarak Türkçe tarif verilerini ayıklar
+ */
+export async function extractRecipeFromImage(base64Data: string, mimeType: string): Promise<ExtractedRecipe> {
+  const groqApiKey = config.groqApiKey || process.env.GROQ_API_KEY;
+  const geminiApiKey = config.geminiApiKey || process.env.GEMINI_API_KEY;
+
+  if (!groqApiKey && !geminiApiKey) {
+    throw new Error('system_error: Neither GROQ_API_KEY nor GEMINI_API_KEY is configured.');
+  }
+
+  try {
+    let responseText = '';
+
+    if (groqApiKey) {
+      const groq = new Groq({ apiKey: groqApiKey });
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [
+          { role: 'system', content: SYSTEM_INSTRUCTION },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Aşağıdaki ekran görüntüsünde yer alan yazıları (OCR) oku, tarif metnini bul ve Türkçe yemek tarifi JSON verisi olarak çıkar.'
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:${mimeType};base64,${base64Data}`
+                }
+              }
+            ]
+          }
+        ],
+        model: 'llama-3.2-11b-vision-preview',
+        temperature: 0.1,
+        response_format: { type: 'json_object' }
+      });
+      responseText = chatCompletion.choices[0]?.message?.content || '';
+    } else if (geminiApiKey) {
+      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.6-flash',
+        contents: [
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType: mimeType
+            }
+          },
+          'Aşağıdaki ekran görüntüsünde yer alan yazıları (OCR) oku, tarif metnini bul ve Türkçe yemek tarifi JSON verisi olarak çıkar.'
+        ],
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+          responseMimeType: 'application/json',
+          temperature: 0.1
+        }
+      });
+      responseText = response.text || '';
+    }
+
+    if (!responseText) {
+      throw new Error('LLM returned an empty response.');
+    }
+
+    const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+    const parsedJson = JSON.parse(cleanJson);
+    const recipe = recipeZodSchema.parse(parsedJson) as ExtractedRecipe;
+    
+    // Halüsinasyon denetimini JSON'daki başlık metnine göre yapıyoruz
+    const validatedRecipe = validateHallucinations(recipe, recipe.title);
+    
+    return validatedRecipe;
+  } catch (error: any) {
+    throw new Error(`system_error: LLM image extraction failed. Details: ${error.message}`);
+  }
 }

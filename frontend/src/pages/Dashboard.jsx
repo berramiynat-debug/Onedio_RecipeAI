@@ -23,6 +23,7 @@ export default function Dashboard({ onRecipeReady, user }) {
   const [errorClass, setErrorClass] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const pollRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Polling mekanizması (FR-24)
   const startPolling = useCallback((id) => {
@@ -133,7 +134,7 @@ export default function Dashboard({ onRecipeReady, user }) {
     setIsSubmitting(true);
 
     try {
-      const result = await api.startImport(rawText, true);
+      const result = await api.startImport(rawText, 'text');
 
       if (result.error_class) {
         setError(result.message);
@@ -152,6 +153,67 @@ export default function Dashboard({ onRecipeReady, user }) {
     setIsSubmitting(false);
   };
 
+  const triggerFileSelect = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      setError('Lütfen geçerli bir görsel dosyası seçin.');
+      setErrorClass('invalid_input');
+      return;
+    }
+
+    setError(null);
+    setErrorClass(null);
+    setIsSubmitting(true);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const base64Str = event.target?.result;
+      if (typeof base64Str !== 'string') {
+        setError('Görsel okunurken bir hata oluştu.');
+        setErrorClass('system_error');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const commaIdx = base64Str.indexOf(',');
+      const base64Data = base64Str.substring(commaIdx + 1);
+      const mimeType = file.type;
+
+      try {
+        const result = await api.startImport({ base64: base64Data, mimeType }, 'image');
+
+        if (result.error_class) {
+          setError(result.message);
+          setErrorClass(result.error_class);
+          setIsSubmitting(false);
+          return;
+        }
+
+        setJobId(result.jobId);
+        setJobStatus('queued');
+        startPolling(result.jobId);
+      } catch (err) {
+        setError('Sunucuya bağlanılamadı. Lütfen backend\'in çalıştığından emin olun.');
+        setErrorClass('system_error');
+        setIsSubmitting(false);
+      }
+    };
+    reader.onerror = () => {
+      setError('Dosya okunurken hata oluştu.');
+      setErrorClass('system_error');
+      setIsSubmitting(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleRetry = () => {
     setError(null);
     setErrorClass(null);
@@ -161,6 +223,7 @@ export default function Dashboard({ onRecipeReady, user }) {
     setUrl('');
     setRawText('');
     setShowTextFallback(false);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   // Active step index hesaplama
@@ -185,15 +248,39 @@ export default function Dashboard({ onRecipeReady, user }) {
             Instagram, TikTok ve YouTube'daki yemek videolarını anında düzenlenebilir Türkçe tariflere dönüştür.
           </p>
 
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleFileChange}
+          />
+
           {showTextFallback ? (
             <form onSubmit={handleTextSubmit} style={{ maxWidth: 600, margin: '1rem auto' }} className="slide-up">
               <div className="card" style={{ padding: 'var(--space-6)', textAlign: 'left', background: 'rgba(255, 255, 255, 0.95)', border: '1px solid var(--color-orange-light)', borderRadius: 'var(--border-radius-lg)', boxShadow: 'var(--shadow-md)' }}>
                 <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--color-navy)', marginBottom: 'var(--space-1)' }}>
-                  📝 Tarif Açıklamasını Yapıştırın
+                  📝 Tarif Açıklamasını Yapıştırın veya Fotoğraf Yükleyin
                 </h3>
                 <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-4)' }}>
-                  Instagram güvenlik duvarı veya erişim engeli nedeniyle bu gönderiyi doğrudan okuyamadık. Gönderinin açıklama (caption) yazısını kopyalayıp aşağıdaki kutuya yapıştırarak tarifi anında çıkarabilirsiniz!
+                  Instagram güvenlik duvarı veya erişim engeli nedeniyle bu gönderiyi doğrudan okuyamadık. Gönderinin açıklama metnini yapıştırabilir veya ekran görüntüsünü (SS) yükleyebilirsiniz!
                 </p>
+
+                <div 
+                  onClick={triggerFileSelect} 
+                  style={{ border: '2px dashed var(--color-orange-light)', borderRadius: 'var(--border-radius-md)', padding: 'var(--space-4)', textAlign: 'center', marginBottom: 'var(--space-4)', background: 'rgba(255, 107, 107, 0.03)', cursor: 'pointer', transition: 'border-color 0.2s' }}
+                  onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-orange)'}
+                  onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--color-orange-light)'}
+                >
+                  <span style={{ fontSize: 'var(--font-size-2xl)' }}>📸</span>
+                  <p style={{ margin: 'var(--space-1) 0 0', fontSize: 'var(--font-size-sm)', fontWeight: 500, color: 'var(--color-navy)' }}>
+                    Ekran görüntüsü (SS) yüklemek için tıklayın
+                  </p>
+                  <p style={{ margin: 0, fontSize: '11px', color: 'var(--color-text-secondary)' }}>
+                    (Instagram/TikTok gönderisinin açıklama görüntüsü)
+                  </p>
+                </div>
+
                 <textarea
                   className="input"
                   style={{ minHeight: '150px', resize: 'vertical', width: '100%', marginBottom: 'var(--space-4)', padding: 'var(--space-3)', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--color-navy-light)' }}
@@ -237,6 +324,26 @@ export default function Dashboard({ onRecipeReady, user }) {
                     id="url-input"
                   />
                   <button
+                    type="button"
+                    onClick={triggerFileSelect}
+                    title="Ekran Görüntüsü Yükle (SS)"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      fontSize: 'var(--font-size-lg)',
+                      cursor: 'pointer',
+                      padding: '0 var(--space-2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      color: 'var(--color-navy)',
+                      transition: 'transform 0.2s',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    ➕
+                  </button>
+                  <button
                     className="btn btn-primary"
                     type="submit"
                     disabled={!url.trim() || isSubmitting}
@@ -246,13 +353,21 @@ export default function Dashboard({ onRecipeReady, user }) {
                   </button>
                 </div>
               </form>
-              <div style={{ marginTop: 'var(--space-4)' }}>
+              <div style={{ marginTop: 'var(--space-4)', display: 'flex', gap: 'var(--space-4)', justifyContent: 'center' }}>
                 <button 
                   type="button" 
                   onClick={() => setShowTextFallback(true)} 
                   style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-navy)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
                 >
-                  Veya elinizdeki tarif metnini doğrudan yapıştırın
+                  Metin olarak yapıştır
+                </button>
+                <span style={{ color: 'var(--color-text-secondary)', fontSize: 'var(--font-size-sm)' }}>|</span>
+                <button 
+                  type="button" 
+                  onClick={triggerFileSelect} 
+                  style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-navy)', textDecoration: 'underline', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500 }}
+                >
+                  Ekran Görüntüsü yükle
                 </button>
               </div>
             </>
