@@ -187,13 +187,13 @@ export default function ReviewEdit({ jobData, jobId, user, onSaved, onCancel }) 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <button 
                 className="btn btn-primary btn-lg"
-                onClick={() => { window.onbeforeunload = null; navigate('/login'); }}
+                onClick={() => { window.onbeforeunload = null; onCancel(); navigate('/login'); }}
               >
                 Giriş Yap
               </button>
               <button 
                 className="btn btn-secondary btn-lg"
-                onClick={() => { window.onbeforeunload = null; navigate('/register'); }}
+                onClick={() => { window.onbeforeunload = null; onCancel(); navigate('/register'); }}
               >
                 Ücretsiz Kayıt Ol
               </button>

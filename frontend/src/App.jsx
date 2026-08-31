@@ -121,10 +121,20 @@ function AppContent() {
                 </>
               ) : (
                 <>
-                  <NavLink to="/login" className="btn btn-secondary btn-sm" style={{ padding: '0.25rem 0.75rem' }}>
+                  <NavLink 
+                    to="/login" 
+                    className="btn btn-secondary btn-sm" 
+                    style={{ padding: '0.25rem 0.75rem' }}
+                    onClick={(e) => handleNavClick(e, '/login')}
+                  >
                     Giriş Yap
                   </NavLink>
-                  <NavLink to="/register" className="btn btn-primary btn-sm" style={{ padding: '0.25rem 0.75rem' }}>
+                  <NavLink 
+                    to="/register" 
+                    className="btn btn-primary btn-sm" 
+                    style={{ padding: '0.25rem 0.75rem' }}
+                    onClick={(e) => handleNavClick(e, '/register')}
+                  >
                     Kayıt Ol
                   </NavLink>
                 </>
