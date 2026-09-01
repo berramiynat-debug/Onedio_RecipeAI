@@ -275,11 +275,70 @@ function extractCaptionFromOembedHtml(html: string): string | null {
   return null;
 }
 
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&#([0-9]+);/g, (_, dec) => String.fromCharCode(parseInt(dec, 10)))
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#039;/g, "'");
+}
+
 /**
  * Instagram gönderisinden metadata ve açıklama çeker.
  */
 async function scrapeInstagram(url: string): Promise<ScrapedMetadata> {
-  // 0. Apify Instagram Scraper Entegrasyonu (Eğer API token tanımlıysa %100 kararlı ve login engelsiz çalışır)
+  // 1. Meta / Facebook Crawler User-Agent ile doğrudan çek (Giriş duvarına takılmaz ve anında tam caption döner)
+  try {
+    await validateUrlForSsrf(url);
+    const { data: html } = await axios.get(url, {
+      headers: {
+        'User-Agent': 'facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)',
+        'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
+      },
+      timeout: 10000,
+      maxContentLength: config.maxContentLength
+    });
+
+    const rawOgDesc = html.match(/property="og:description" content="([^"]*)"/i)?.[1] || '';
+    const rawOgTitle = html.match(/property="og:title" content="([^"]*)"/i)?.[1] || '';
+
+    let decodedDesc = decodeHtmlEntities(rawOgDesc);
+    let decodedTitle = decodeHtmlEntities(rawOgTitle);
+
+    let author = 'Instagram Üreticisi';
+    const authorMatch = decodedTitle.match(/^(.*?) on Instagram:/i) || decodedTitle.match(/^(.*?), Instagram:/i);
+    if (authorMatch) {
+      author = authorMatch[1].trim();
+    }
+
+    if (decodedDesc) {
+      decodedDesc = decodedDesc
+        .replace(/^.*?on Instagram:[\s"']*/i, '')
+        .replace(/^.*?, Instagram:[\s"']*/i, '')
+        .replace(/^[0-9,.]+ (Likes|Beğenme), [0-9,.]+ Comments (Yorum|-).*?:\s*"/i, '')
+        .replace(/^[0-9,.]+ (likes|beğenme), [0-9,.]+ (comments|yorum).*?:\s*"/i, '')
+        .replace(/"\s*$/, '');
+    }
+
+    const content = decodedDesc || decodedTitle;
+
+    if (content && content.length > 20 && !content.includes('Giriş Yap') && !content.includes('Login • Instagram')) {
+      return {
+        title: decodedTitle.replace(/on Instagram:.*$/i, '').replace(/, Instagram:.*$/i, '').trim() || 'Instagram Tarifi',
+        author,
+        platform: 'instagram',
+        originalUrl: url,
+        content
+      };
+    }
+  } catch (e: any) {
+    console.warn(`[scrapeInstagram] Facebook External Hit scraper failed: ${e.message}. Falling back.`);
+  }
+
+  // 2. Apify Instagram Scraper Entegrasyonu (Eğer API token tanımlıysa %100 kararlı ve login engelsiz çalışır)
   if (config.apifyApiToken) {
     try {
       const apifyUrl = `https://api.apify.com/v2/acts/data-slayer~instagram-post-details/run-sync-get-dataset-items?token=${config.apifyApiToken}`;
