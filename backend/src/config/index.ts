@@ -25,6 +25,7 @@ export const config = {
     'tiktok.com',
     'www.tiktok.com',
     'vm.tiktok.com',
+    'vt.tiktok.com',
     'youtube.com',
     'www.youtube.com',
     'youtu.be',
