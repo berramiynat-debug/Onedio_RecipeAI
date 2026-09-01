@@ -279,7 +279,38 @@ function extractCaptionFromOembedHtml(html: string): string | null {
  * Instagram gönderisinden metadata ve açıklama çeker.
  */
 async function scrapeInstagram(url: string): Promise<ScrapedMetadata> {
-  // 0. Meta Geliştirici oEmbed API'sini dene (Eğer token tanımlıysa %100 kararlı ve güvenli çalışır)
+  // 0. Apify Instagram Scraper Entegrasyonu (Eğer API token tanımlıysa %100 kararlı ve login engelsiz çalışır)
+  if (config.apifyApiToken) {
+    try {
+      const apifyUrl = `https://api.apify.com/v2/acts/data-slayer~instagram-post-details/run-sync-get-dataset-items?token=${config.apifyApiToken}`;
+      await validateUrlForSsrf(apifyUrl);
+      const { data } = await axios.post(
+        apifyUrl,
+        {
+          startUrls: [{ url }]
+        },
+        { timeout: 45000 }
+      );
+
+      const post = data?.[0];
+      const caption = post?.caption?.text || post?.caption || '';
+      const author = post?.user?.full_name || post?.user?.username || 'Instagram Üreticisi';
+
+      if (caption && caption.length > 5) {
+        return {
+          title: 'Instagram Tarifi',
+          author,
+          platform: 'instagram',
+          originalUrl: url,
+          content: caption
+        };
+      }
+    } catch (e: any) {
+      console.warn(`[scrapeInstagram] Apify scraper failed: ${e.message}. Falling back to standard scraper.`);
+    }
+  }
+
+  // 0.1. Meta Geliştirici oEmbed API'sini dene (Eğer token tanımlıysa %100 kararlı ve güvenli çalışır)
   if (config.metaAppToken) {
     try {
       const oembedUrl = `https://graph.facebook.com/v18.0/instagram_oembed?url=${encodeURIComponent(url)}&access_token=${config.metaAppToken}`;

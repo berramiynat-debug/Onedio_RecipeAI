@@ -38,4 +38,5 @@ export const config = {
   jobTimeoutMs: 60000, // 60 saniye
   metaAppToken: process.env.META_APP_TOKEN || '',
   rapidapiApiKey: process.env.RAPIDAPI_API_KEY || '',
+  apifyApiToken: process.env.APIFY_API_TOKEN || '',
 };
