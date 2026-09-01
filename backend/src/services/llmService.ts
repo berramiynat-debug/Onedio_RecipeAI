@@ -208,7 +208,27 @@ export async function extractRecipeFromImage(base64Data: string, mimeType: strin
   try {
     let responseText = '';
 
-    if (groqApiKey) {
+    if (geminiApiKey) {
+      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.6-flash',
+        contents: [
+          {
+            inlineData: {
+              data: base64Data,
+              mimeType: mimeType
+            }
+          },
+          'Aşağıdaki ekran görüntüsünde yer alan yazıları (OCR) oku, tarif metnini bul ve Türkçe yemek tarifi JSON verisi olarak çıkar.'
+        ],
+        config: {
+          systemInstruction: SYSTEM_INSTRUCTION,
+          responseMimeType: 'application/json',
+          temperature: 0.1
+        }
+      });
+      responseText = response.text || '';
+    } else if (groqApiKey) {
       const groq = new Groq({ apiKey: groqApiKey });
       const chatCompletion = await groq.chat.completions.create({
         messages: [
@@ -229,31 +249,11 @@ export async function extractRecipeFromImage(base64Data: string, mimeType: strin
             ]
           }
         ],
-        model: 'llama-3.2-11b-vision-preview',
+        model: 'llama-3.2-90b-vision-preview',
         temperature: 0.1,
         response_format: { type: 'json_object' }
       });
       responseText = chatCompletion.choices[0]?.message?.content || '';
-    } else if (geminiApiKey) {
-      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.6-flash',
-        contents: [
-          {
-            inlineData: {
-              data: base64Data,
-              mimeType: mimeType
-            }
-          },
-          'Aşağıdaki ekran görüntüsünde yer alan yazıları (OCR) oku, tarif metnini bul ve Türkçe yemek tarifi JSON verisi olarak çıkar.'
-        ],
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
-          responseMimeType: 'application/json',
-          temperature: 0.1
-        }
-      });
-      responseText = response.text || '';
     }
 
     if (!responseText) {
