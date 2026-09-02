@@ -290,6 +290,41 @@ function decodeHtmlEntities(str: string): string {
  * Instagram gönderisinden metadata ve açıklama çeker.
  */
 async function scrapeInstagram(url: string): Promise<ScrapedMetadata> {
+  // 0. Instagram Cookie (Eğer INSTAGRAM_COOKIE tanımlıysa %100 oturum açmış olarak direkt çeker)
+  if (config.instagramCookie) {
+    try {
+      const shortcode = url.match(/\/p\/([a-zA-Z0-9_-]+)/)?.[1] || url.match(/\/reel\/([a-zA-Z0-9_-]+)/)?.[1];
+      if (shortcode) {
+        const cookieStr = config.instagramCookie.startsWith('sessionid=') ? config.instagramCookie : `sessionid=${config.instagramCookie}`;
+        const { data } = await axios.get(`https://www.instagram.com/p/${shortcode}/?__a=1&__d=dis`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1',
+            'Cookie': cookieStr,
+            'X-IG-App-ID': '936619743392459',
+            'Accept-Language': 'tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7'
+          },
+          timeout: 10000
+        });
+
+        const item = data?.items?.[0] || data?.graphql?.shortcode_media;
+        const caption = item?.caption?.text || item?.edge_media_to_caption?.edges?.[0]?.node?.text || '';
+        const author = item?.user?.full_name || item?.user?.username || item?.owner?.username || 'Instagram Üreticisi';
+
+        if (caption && caption.length > 5) {
+          return {
+            title: 'Instagram Tarifi',
+            author,
+            platform: 'instagram',
+            originalUrl: url,
+            content: caption
+          };
+        }
+      }
+    } catch (e: any) {
+      console.warn(`[scrapeInstagram] Authenticated cookie fetch failed: ${e.message}. Falling back.`);
+    }
+  }
+
   // 1. Meta / Facebook Crawler User-Agent ile doğrudan çek (Giriş duvarına takılmaz ve anında tam caption döner)
   try {
     await validateUrlForSsrf(url);

@@ -40,4 +40,5 @@ export const config = {
   metaAppToken: process.env.META_APP_TOKEN || '',
   rapidapiApiKey: process.env.RAPIDAPI_API_KEY || '',
   apifyApiToken: process.env.APIFY_API_TOKEN || '',
+  instagramCookie: process.env.INSTAGRAM_COOKIE || '',
 };
