@@ -198,63 +198,33 @@ function validateHallucinations(recipe: ExtractedRecipe, sourceText: string): Ex
  * Ekran görüntüsünden (base64) yapay zeka (Groq Vision / Gemini) kullanarak Türkçe tarif verilerini ayıklar
  */
 export async function extractRecipeFromImage(base64Data: string, mimeType: string): Promise<ExtractedRecipe> {
-  const groqApiKey = config.groqApiKey || process.env.GROQ_API_KEY;
   const geminiApiKey = config.geminiApiKey || process.env.GEMINI_API_KEY;
 
-  if (!groqApiKey && !geminiApiKey) {
-    throw new Error('system_error: Neither GROQ_API_KEY nor GEMINI_API_KEY is configured.');
+  if (!geminiApiKey) {
+    throw new Error('system_error: GEMINI_API_KEY sunucuda tanımlı değil. Lütfen Render Environment ayarlarından GEMINI_API_KEY ekleyin.');
   }
 
   try {
-    let responseText = '';
-
-    if (geminiApiKey) {
-      const ai = new GoogleGenAI({ apiKey: geminiApiKey });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.6-flash',
-        contents: [
-          {
-            inlineData: {
-              data: base64Data,
-              mimeType: mimeType
-            }
-          },
-          'Aşağıdaki ekran görüntüsünde yer alan yazıları (OCR) oku, tarif metnini bul ve Türkçe yemek tarifi JSON verisi olarak çıkar.'
-        ],
-        config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
-          responseMimeType: 'application/json',
-          temperature: 0.1
-        }
-      });
-      responseText = response.text || '';
-    } else if (groqApiKey) {
-      const groq = new Groq({ apiKey: groqApiKey });
-      const chatCompletion = await groq.chat.completions.create({
-        messages: [
-          { role: 'system', content: SYSTEM_INSTRUCTION },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Aşağıdaki ekran görüntüsünde yer alan yazıları (OCR) oku, tarif metnini bul ve Türkçe yemek tarifi JSON verisi olarak çıkar.'
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:${mimeType};base64,${base64Data}`
-                }
-              }
-            ]
+    const ai = new GoogleGenAI({ apiKey: geminiApiKey });
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.6-flash',
+      contents: [
+        {
+          inlineData: {
+            data: base64Data,
+            mimeType: mimeType
           }
-        ],
-        model: 'llama-3.2-90b-vision-preview',
-        temperature: 0.1,
-        response_format: { type: 'json_object' }
-      });
-      responseText = chatCompletion.choices[0]?.message?.content || '';
-    }
+        },
+        'Aşağıdaki ekran görüntüsünde yer alan yazıları (OCR) oku, tarif metnini bul ve Türkçe yemek tarifi JSON verisi olarak çıkar.'
+      ],
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        responseMimeType: 'application/json',
+        temperature: 0.1
+      }
+    });
+
+    const responseText = response.text || '';
 
     if (!responseText) {
       throw new Error('LLM returned an empty response.');
