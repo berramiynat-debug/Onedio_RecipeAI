@@ -572,6 +572,37 @@ async function scrapeTikTok(url: string): Promise<ScrapedMetadata> {
     let author = 'TikTok Üreticisi';
     let content = '';
 
+    // 0. TikWM API (Kısa linkleri, video ve fotoğraf albümlerini %100 oranında engelsiz çeker)
+    try {
+      const tikwmUrl = 'https://www.tikwm.com/api/';
+      await validateUrlForSsrf(tikwmUrl);
+      const res = await axios.post(tikwmUrl, { url, hd: 1 }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        },
+        timeout: 8000
+      });
+
+      if (res.data && res.data.code === 0 && res.data.data) {
+        const item = res.data.data;
+        const caption = item.title || '';
+        const authorName = item.author?.nickname || item.author?.unique_id || 'TikTok Üreticisi';
+        
+        if (caption && caption.length > 5) {
+          return {
+            title: 'TikTok Tarifi',
+            author: authorName,
+            platform: 'tiktok',
+            originalUrl: url,
+            content: caption
+          };
+        }
+      }
+    } catch (tikwmErr: any) {
+      console.warn(`[scrapeTikTok] TikWM API failed: ${tikwmErr.message}. Falling back.`);
+    }
+
     // 1. oEmbed API'sini dene (TikTok'ta oEmbed açıklamayı/başlığı 100% getirir ve bot blokajı yemez)
     try {
       const oembedUrl = `https://www.tiktok.com/oembed?url=${encodeURIComponent(url)}`;
