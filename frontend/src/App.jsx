@@ -160,7 +160,7 @@ function AppContent() {
             <Routes>
               <Route path="/" element={<Dashboard onRecipeReady={handleRecipeReady} user={user} />} />
               <Route path="/login" element={<Login setAuth={setUser} />} />
-              <Route path="/register" element={<Register />} />
+              <Route path="/register" element={<Register setAuth={setUser} />} />
               <Route path="/collection" element={user ? <Collection /> : <Navigate to="/login" replace />} />
               <Route path="/recipes/:id" element={user ? <RecipeDetail /> : <Navigate to="/login" replace />} />
               <Route path="/profile" element={user ? <Profile user={user} setUser={setUser} /> : <Navigate to="/login" replace />} />

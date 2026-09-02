@@ -40,12 +40,32 @@ export const authController = {
 
       const hashedPassword = await bcryptjs.hash(password, 10);
 
-      await pool.query(
+      const [result] = await pool.query(
         'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
         [username.trim(), email.trim(), hashedPassword]
+      ) as any;
+
+      const newUserId = result.insertId;
+
+      const token = jwt.sign(
+        { 
+          id: newUserId, 
+          email: email.trim(), 
+          username: username.trim() 
+        }, 
+        config.jwtSecret, 
+        { expiresIn: '24h' }
       );
 
-      res.status(201).json({ message: 'Kayıt başarılı, giriş yapabilirsiniz.' });
+      res.status(201).json({ 
+        message: 'Kayıt başarılı.',
+        token,
+        user: {
+          id: newUserId,
+          email: email.trim(),
+          username: username.trim()
+        }
+      });
     } catch (error) {
       console.error('Kayıt hatası:', error);
       res.status(500).json({ error: 'Sunucu hatası.' });

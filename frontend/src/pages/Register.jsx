@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../utils/api';
 
-export default function Register() {
+export default function Register({ setAuth }) {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -15,9 +15,16 @@ export default function Register() {
     setError(null);
     setLoading(true);
     try {
-      await api.register(username, email, password);
-      // Auto redirect to login after successful register
-      navigate('/login');
+      const data = await api.register(username, email, password);
+      if (data && data.token) {
+        localStorage.setItem('token', data.token);
+        if (setAuth) {
+          setAuth(data.user);
+        }
+        navigate('/');
+      } else {
+        navigate('/login');
+      }
     } catch (err) {
       setError(err.message || 'Kayıt olunamadı.');
     } finally {
