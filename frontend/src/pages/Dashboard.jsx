@@ -260,10 +260,10 @@ export default function Dashboard({ onRecipeReady, user }) {
             <form onSubmit={handleTextSubmit} style={{ maxWidth: 600, margin: '1rem auto' }} className="slide-up">
               <div className="card" style={{ padding: 'var(--space-6)', textAlign: 'left', background: 'rgba(255, 255, 255, 0.95)', border: '1px solid var(--color-orange-light)', borderRadius: 'var(--border-radius-lg)', boxShadow: 'var(--shadow-md)' }}>
                 <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 700, color: 'var(--color-navy)', marginBottom: 'var(--space-1)' }}>
-                  📝 Tarif Açıklamasını Yapıştırın veya Fotoğraf Yükleyin
+                  📝 Tarif Detaylarını Tamamlayın
                 </h3>
                 <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-4)' }}>
-                  Instagram güvenlik duvarı veya erişim engeli nedeniyle bu gönderiyi doğrudan okuyamadık. Gönderinin açıklama metnini yapıştırabilir veya ekran görüntüsünü (SS) yükleyebilirsiniz!
+                  Bu gönderinin malzeme veya yapılış adımları metin yerine görsel/video üzerinde yer alıyor olabilir. Tarifin ekran görüntüsünü yükleyebilir veya açıklama metnini buraya yapıştırabilirsiniz!
                 </p>
 
                 <div 
@@ -277,7 +277,7 @@ export default function Dashboard({ onRecipeReady, user }) {
                     Ekran görüntüsü (SS) yüklemek için tıklayın
                   </p>
                   <p style={{ margin: 0, fontSize: '11px', color: 'var(--color-text-secondary)' }}>
-                    (Instagram/TikTok gönderisinin açıklama görüntüsü)
+                    (Gönderideki tarif veya malzeme fotoğrafı)
                   </p>
                 </div>
 
